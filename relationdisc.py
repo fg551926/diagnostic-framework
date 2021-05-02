@@ -151,7 +151,7 @@ def corr_plot(sd_log):
     tmp = data.corr()
     fig, ax = plt.subplots(figsize=(12, 9))
     sns.heatmap(
-        data.corr(),
+        data.corr().fillna(0),
         cmap=sns.diverging_palette(220, 10, as_cmap=True),
         square=True,
         cbar_kws={'shrink': .9},
@@ -164,7 +164,7 @@ def corr_plot(sd_log):
     return data.corr()
 
 
-def corr_distance2(sd_log):
+def corr_distance(sd_log):
     # long runtime
     from scipy.spatial.distance import pdist, squareform
     import dcor
@@ -174,23 +174,22 @@ def corr_distance2(sd_log):
 
     k = 0
     for feat_i in feat_names:
-        tmp = data.loc[:,feat_i]
-        v1=data.loc[:,feat_i].to_numpy()
+        tmp = data.loc[:, feat_i]
+        v1 = data.loc[:, feat_i].to_numpy()
 
         for feat_j in feat_names[k:]:
-            v2=data.loc[:,feat_j].to_numpy()
+            v2 = data.loc[:, feat_j].to_numpy()
 
-            rez = dcor.distance_correlation(v1,v2)
+            rez = dcor.distance_correlation(v1, v2)
 
-            df_dcor.at[feat_i, feat_j] = float(rez)
-            df_dcor.at[feat_j, feat_i] = float(rez)
+            df_dcor.loc[feat_i, feat_j] = float(rez)
+            df_dcor.loc[feat_j, feat_i] = float(rez)
 
         k += 1
-
     # plot as heatmap
     fig, ax = plt.subplots(figsize=(12, 9))
     sns.heatmap(
-        df_dcor,
+        df_dcor.astype(float),
         cmap=sns.diverging_palette(220, 10, as_cmap=True),
         square=True,
         cbar_kws={'shrink': .9},
@@ -204,7 +203,7 @@ def corr_distance2(sd_log):
     return df_dcor
 
 
-def corr_distance(sd_log):
+def corr_distance2(sd_log):
     # long runtime
     from scipy.spatial.distance import pdist, squareform
     import dcor

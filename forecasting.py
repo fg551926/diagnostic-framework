@@ -143,7 +143,7 @@ def multi_forecast(sd_log, variables, n_period):  # sd_log object, variables lis
     lag_order = results.k_ar
     fc = results.forecast(data.values[-lag_order:], n_period)
     df_fc = pd.DataFrame(fc, index=data.index[-n_period:])
-    # TODO inverting forecast
+    # TODO inverting resulting forecast
     #inv_diff(sd_log.data[sd_log.finish_rate], data[sd_log.finish_rate], ndiff)
     plt.show()
 
@@ -183,6 +183,7 @@ def check_ser_corr(model_fitted):
 
 
 def inv_diff(df_orig_column, df_diff_column, periods):
+    # TODO
     # Generate np.array for the diff_inv function - it includes first n values(n =
     # periods) of original data & further diff values of given periods
     value = np.array(df_orig_column[:periods].tolist()+df_diff_column[periods:].tolist())
