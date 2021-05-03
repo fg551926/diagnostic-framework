@@ -1,7 +1,7 @@
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
-from behaviordisc import cp_detection_KSWIN
+from behaviordisc import cp_detection_KSWIN, tp_detection
 import re
 from statsmodels.tsa.stattools import adfuller
 
@@ -35,6 +35,20 @@ def make_stationary(data, count=0):  # df input
         return make_stationary(data.diff().dropna(), count + 1)
 
 
+def get_period(tw, n_weeks):
+    # tw one of ['1H', '8H', '1D', '7D'] TODO might be more
+    if tw == '1H':
+        period = n_weeks * 168
+    elif tw == '8H':
+        period = n_weeks * 21
+    elif tw == '1D':
+        period = n_weeks * 7
+    elif tw == '7D':
+        period = 4
+    else:
+        period = None
+
+    return period
 
 class Sdl:
 
@@ -60,6 +74,8 @@ class Sdl:
         # TODO
         self.relations = {}
         self.changepoints = {}
+        self.turningpoints = {}
+        self.calc_turning_points()
         self.behavior = {}
 
     def preprocess_rawData(self):
@@ -95,3 +111,10 @@ class Sdl:
                 i.axvspan(detected[s + 1], detected[s + 2], label="Change Point", color="red", alpha=0.3)
             i.axvspan(detected[-1], len(self.data), label="Change Point", color="green", alpha=0.3)
         plt.show()
+
+    def calc_turning_points(self):
+        for feat in self.columns:
+            series = self.get_points(feat)
+            period = get_period(self.tw, n_weeks=1)
+            tps = tp_detection(series, period=period)
+            self.turningpoints[feat] = tps.to_numpy()

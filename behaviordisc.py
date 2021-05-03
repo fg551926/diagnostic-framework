@@ -7,6 +7,8 @@ import matplotlib.pyplot as plt
 import ruptures as rpt
 import pandas as pd
 import numpy as np
+from statsmodels.tsa.seasonal import STL
+from scipy.signal import argrelmin, argrelmax
 
 
 def cp_detection_binary_segmentation(points):
@@ -62,28 +64,52 @@ def cp_detection_ADWIN(points):
 
 
 def decompostion_STL(series, period=None, title=''):
-    from statsmodels.tsa.seasonal import STL
-
     stl = STL(series, period=period, robust=True)
     res_robust = stl.fit()
     fig = res_robust.plot()
     fig.text(0.1, 0.95, title, size=15, color='purple')
     plt.show()
+    return stl
 
 
-def get_windows_size(period):
+def tp_detection(series, period=None):  # series numpyarray
+    """
+    Get turning points by inspeccting trend cycle of series for finding local extremas
+    :param series: numpy array
+    :param period: period for detecting trend cycle in decomposition. If none take whole series as input
+    :return: returns pandas series of turning points
+    """
+    stl = STL(series, period=period, robust=True)
+    res_robust = stl.fit()
+    trend_x = res_robust.trend
+    series_x = pd.Series(trend_x)
+
+    N = 1  # number of iterations
+    s_h = series_x.dropna().copy()  # make a series of Highs
+    s_l = series_x.dropna().copy()  # make a series of Lows
+    for i in range(N):
+        s_h = s_h.iloc[argrelmax(s_h.values)[0]]  # locate maxima
+        s_l = s_l.iloc[argrelmin(s_l.values)[0]]  # locate minima
+        s_h = s_h[~s_h.index.isin(s_l.index)]  # drop index that appear in both
+        s_l = s_l[~s_l.index.isin(s_h.index)]  # drop index that appear in both
+    res = pd.concat([s_h, s_l]).sort_index()
+
+    return res
+
+
+def get_windows_size(tw):
     # one of ['1H', '8H', '1D', '7D']
     # set windows size two two weeks depending on log, stat size one week
-    if period == '1H':
+    if tw == '1H':
         window_size = 2 * 168
         stat_size = 168
-    elif period == '8H':
+    elif tw == '8H':
         window_size = 2 * 21
         stat_size = 21
-    elif period == '1D':
+    elif tw == '1D':
         window_size = 2 * 7
         stat_size = 7
-    elif period == '7D':
+    elif tw == '7D':
         window_size = 8
         stat_size = 4
     else:
