@@ -3,7 +3,14 @@ import numpy as np
 import matplotlib.pyplot as plt
 from behaviordisc import cp_detection_KSWIN, tp_detection
 import re
-from statsmodels.tsa.stattools import adfuller
+from statsmodels.tsa.stattools import adfuller, acf
+from scipy.fftpack import fft, fftfreq
+from math import ceil
+
+EXPECTED_PERIODS = {'1H': [24, 168, 672], # expected periods for seasonal patterns: Later can be set by user
+                    '8H': [3, 21, 84],
+                    '1D': [7, 28, 352],
+                    '7D': [4, 48]}
 
 
 # Test for multivariate ts
@@ -50,13 +57,12 @@ def get_period(tw, n_weeks):
 
     return period
 
+
 class Sdl:
 
     def __init__(self, path):
         self.data = pd.read_csv(path)
         self.raw_data = pd.read_csv(path)
-        self.isStationary = stationary_test(self.data)
-        self.data_diff = make_stationary(self.data)
 
         self.series = self.data.to_numpy()
         self.columns = self.data.columns
@@ -71,11 +77,15 @@ class Sdl:
         self.time_in_process = [self.columns[5]][0]
         self.waiting_time = [s for s in self.columns if "waiting" in s.lower()][0]
         self.num_in_process = [self.columns[7]][0]
+
+        self.isStationary = stationary_test(self.data)
+        self.period = self.estimate_period()
+        self.data_diff = make_stationary(self.data)
         # TODO
         self.relations = {}
         self.changepoints = {}
         self.turningpoints = {}
-        self.calc_turning_points()
+        # self.calc_turning_points()
         self.behavior = {}
 
     def preprocess_rawData(self):
@@ -115,6 +125,65 @@ class Sdl:
     def calc_turning_points(self):
         for feat in self.columns:
             series = self.get_points(feat)
-            period = get_period(self.tw, n_weeks=1)
-            tps = tp_detection(series, period=period)
+            #period = get_period(self.tw, n_weeks=1)
+            tps = tp_detection(series, period=self.period)
             self.turningpoints[feat] = tps.to_numpy()
+
+    def estimate_period(self):  # estimates period based on arrival rate in seasonal pattern
+        """
+        1) estimates period by computing FFT (periodogram) and find Time Periods within the Top 3 Highest Power
+        2) compare period to expected ones, if they match compute acf to check significance
+        """
+        series = self.get_points(self.arrival_rate)
+        if not self.isStationary:
+            series = np.diff(series)
+
+        # get top 3 seasons
+        no_of_seasons = 3
+        series_fft = fft(series)
+
+        power = np.abs(series_fft)
+        sample_freq = fftfreq(series_fft.size)
+
+        # Find the peak frequency
+        pos_mask = np.where(sample_freq > 0)
+        freqs = sample_freq[pos_mask]
+        powers = power[pos_mask]
+
+        # find top frequencies and corresponding time periods for seasonal pattern
+        top_powers = np.argpartition(powers, -no_of_seasons)[-no_of_seasons:]
+
+        time_periods_from_fft = 1 / freqs[top_powers]
+        time_periods = time_periods_from_fft.astype(int)
+        print(time_periods)
+
+        time_lags_expected = EXPECTED_PERIODS[self.tw]
+        # One of the seasonality returned from FFT should be within range of Expected time period
+        for time_lag in time_lags_expected:
+            nearest_time_lag = time_periods.flat[np.abs(time_periods - time_lag).argmin()]
+
+            # Using 5% for range comaprison
+            #tmp = range(time_lag - ceil(0.05 * time_lag), time_lag + ceil(0.05 * time_lag))
+            if nearest_time_lag in range(
+                    time_lag - ceil(0.05 * time_lag),
+                    time_lag + ceil(0.05 * time_lag)):
+
+                # Check ACF value with lags identified from expected
+                acf_score_exp = acf(series, nlags=time_lag)[-1]
+                # Check ACF value with lags identified from fft
+                acf_score_fft = acf(series, nlags=nearest_time_lag)[-1]
+
+                # Check ACF is significant or not.
+                if acf_score_exp >= 2 / np.sqrt(len(series)):
+                    # ACF is significant and FFT identifies seasonality
+                    print('Metrics is seasonal by expected period ' + str(time_lag))
+                    return time_lag
+                elif acf_score_fft >= 2 / np.sqrt(len(series)):
+                    # ACF is significant and FFT identifies seasonality
+                    print('Metrics is seasonal by recommended period ' + str(nearest_time_lag))
+                    return nearest_time_lag
+                else:
+                    print('ACF value of expected period is not significant')
+            else:
+                print('Seasonality could not be identified')
+                return None
