@@ -11,7 +11,6 @@ import seaborn as sns
 from statsmodels.tsa.stattools import grangercausalitytests
 
 
-
 def dtw_visual(x, y):  # shape X, Y np.array([0., 0, 1, 2, 1, 0, 2, 1, 0, 0])
     """
     Plot to show how dtw works
@@ -117,6 +116,7 @@ def grangers_causation_matrix(sd_log, test='ssr_ftest', verbose=False, maxlag=4)
     else:
         data, n_diff = sd_log.data_diff
     relations = {}
+    exogenous_factors = []
     # TODO constant colums lead to error
     # data.drop(columns=[sd_log.waiting_time], inplace=True)
     #  drop constant columns
@@ -134,34 +134,25 @@ def grangers_causation_matrix(sd_log, test='ssr_ftest', verbose=False, maxlag=4)
             df.loc[t2, t1] = min_p_value
             if min_p_value < 0.05:
                 relations[(t2, t1)] = lag
+            else:
+                exogenous_factors.append((t2, t1))
 
     df.columns = [var + '_x' for var in variables]
     df.index = [var + '_y' for var in variables]
     print(relations)
-    return df, relations
+    plot_heatmap(data=df, title="Grangers Causality Among Features")
+    return df, relations, exogenous_factors
 
 
-def corr_plot(sd_log):
+def corr_pearson(sd_log):
     """
     Plots a heatmap with values as pearson correlation among all features for linear relation type detection
     :param sd_log: sd_log object
     :return: return df.corr() of the sd_log
     """
-    data = sd_log.data
-    tmp = data.corr()
-    fig, ax = plt.subplots(figsize=(12, 9))
-    sns.heatmap(
-        data.corr().fillna(0),
-        cmap=sns.diverging_palette(220, 10, as_cmap=True),
-        square=True,
-        cbar_kws={'shrink': .9},
-        ax=ax,
-        annot=True,
-        linewidths=0.1, vmax=1.0, linecolor='white',
-        annot_kws={'fontsize': 12})
-    plt.title("Pearson's Correlation Among Features")
-    plt.show()
-    return data.corr()
+    data = sd_log.data.corr()
+    plot_heatmap(data=data, title="Pearson's Correlation Among Features")
+    return data
 
 
 def corr_distance(sd_log):
@@ -187,9 +178,15 @@ def corr_distance(sd_log):
 
         k += 1
     # plot as heatmap
+    plot_heatmap(df_dcor.astype(float), title="Distance Correlation Among Features")
+    return df_dcor
+
+
+def plot_heatmap(data, title):
+    # plot as heatmap
     fig, ax = plt.subplots(figsize=(12, 9))
     sns.heatmap(
-        df_dcor.astype(float),
+        data,
         cmap=sns.diverging_palette(220, 10, as_cmap=True),
         square=True,
         cbar_kws={'shrink': .9},
@@ -197,38 +194,5 @@ def corr_distance(sd_log):
         annot=True,
         linewidths=0.1, vmax=1.0, linecolor='white',
         annot_kws={'fontsize': 12})
-    plt.title("Distance Correlation Among Features")
+    plt.title(title)
     plt.show()
-
-    return df_dcor
-
-
-def corr_distance2(sd_log):
-    # long runtime
-    from scipy.spatial.distance import pdist, squareform
-    import dcor
-    data = sd_log.data
-    feat_names = sd_log.columns.tolist()
-    df_dcor = pd.DataFrame(index=feat_names, columns=feat_names)
-
-    def compute_matrix(i):
-        v1 = data.loc[:, i].as_matrix()
-
-        v1_dist = squareform(pdist(v1[:, np.newaxis]))
-        return (i, dcor.double_centered(v1_dist))
-
-    k = 0
-    for feat_i in feat_names:
-        tmp = data.loc[:,feat_i]
-        v1=data.loc[:,feat_i].to_numpy()
-
-        for feat_j in feat_names[k:]:
-            v2=data.loc[:,feat_j].to_numpy()
-
-            rez = dcor.distance_correlation(v1,v2)
-
-            df_dcor.at[feat_i, feat_j] = rez
-            df_dcor.at[feat_j, feat_i] = rez
-
-        k += 1
-    return df_dcor
