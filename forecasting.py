@@ -19,13 +19,14 @@ from pmdarima.arima.utils import ndiffs
 from pmdarima.utils import diff_inv
 
 
-def plot_acf(series):
+def stats_plot_acf(series):
     plot_acf(series)
-    # plt.show()
+    plt.show()
 
 
-def plot_pacf(series):
+def stats_plot_pacf(series):
     plot_pacf(series)
+    plt.show()
 
 
 def arima_model(series):
@@ -37,23 +38,23 @@ def arima_model(series):
     plt.show()
 
 
-def auto_arima(series, tw):
+def auto_arima(series, freq):
     """
     Builds SARIMA model used in univariate forecasting
     :param series: numy array or pandas series
-    :param tw: time window of sd_log
+    :param freq: periodicity of sd_log. Use period in SdLog Obejct
     :return: model
     """
-    if tw == '1H':
-        freq = 168
-    elif tw == '8H':
-        freq = 21
-    elif tw == '1D':
-        freq = 7
-    elif tw == '7D':
-        freq = 4
-    else:
-        freq = 1
+    # if tw == '1H':
+    #     freq = 168
+    # elif tw == '8H':
+    #     freq = 21
+    # elif tw == '1D':
+    #     freq = 7
+    # elif tw == '7D':
+    #     freq = 4
+    # else:
+    #     freq = 1
 
     model = pm.auto_arima(series, start_p=1, start_q=1,
                           test='adf',  # use adftest to find optimal 'd'
@@ -62,7 +63,7 @@ def auto_arima(series, tw):
                           d=None,  # let model determine 'd'
                           seasonal=True,  # Seasonality
                           start_P=0,
-                          D=None,
+                          D=None,  # let model determine 'D'
                           trace=True,
                           error_action='ignore',
                           suppress_warnings=True,
@@ -71,17 +72,17 @@ def auto_arima(series, tw):
     return model
 
 
-def uni_forecast(series, n_periods, tw):
+def uni_forecast(series, n_periods, freq):
     """
     This method used the auto_arima model to forecast univariate time series using the SARIMA model.
     The auto_model iterates over different combinations of the parameters and uses the AIC to find the optimal one
     :param series: numpy array or pandas series of univariate time series
     :param n_periods: number of steps we would like to forecast
-    :param tw: timewindow of sd_log used for Seasonality shifting (P, D, Q)m
+    :param freq: periodicity of sd_log. Use period in SdLog Obejct
     :return: predicted values as df with corresponding index
     """
     # Forecast
-    model = auto_arima(series, tw)
+    model = auto_arima(series, freq)
     n_periods = n_periods
     fc, confint = model.predict(n_periods=n_periods, return_conf_int=True)
     index_of_fc = np.arange(len(series), len(series) + n_periods)
@@ -118,7 +119,7 @@ def multi_forecast(sd_log, variables, n_period):  # sd_log object, variables lis
     """
 
     :param sd_log: sd_log object
-    :param variables: features you would like to use for the multivariate forecast
+    :param variables: features you would like to use for the multivariate forecast as list
     :param n_period: steps you would like to predict
     :return:
     """
@@ -131,8 +132,8 @@ def multi_forecast(sd_log, variables, n_period):  # sd_log object, variables lis
         ndiff = sd_log.data_diff[1]
 
     #  Split into train (0.9) and test (0.1)
-    #data_train = data[:int(0.9*(len(data)))]
-    #data_test = data[int(0.9*(len(data))):]
+    # data_train = data[:int(0.9*(len(data)))]
+    # data_test = data[int(0.9*(len(data))):]
     model = VAR(data)
     # Look for minimum AIC/BIC and corresponding lag to fit model
     lag = min(model.select_order(maxlags=max_lag).selected_orders.values())
@@ -144,7 +145,7 @@ def multi_forecast(sd_log, variables, n_period):  # sd_log object, variables lis
     fc = results.forecast(data.values[-lag_order:], n_period)
     df_fc = pd.DataFrame(fc, index=data.index[-n_period:])
     # TODO inverting resulting forecast
-    #inv_diff(sd_log.data[sd_log.finish_rate], data[sd_log.finish_rate], ndiff)
+    inv_diff(sd_log.data[sd_log.finish_rate], data[sd_log.finish_rate], ndiff)
     plt.show()
 
     return df_fc
@@ -161,7 +162,7 @@ def var_diagnostic(model_fitted):
     print(fevd.summary())
 
     ser_cor = check_ser_corr(model_fitted)
-    print('Check for serial correlation (values aroun 2 are good): '+str(ser_cor))
+    print('Check for serial correlation (values aroun 2 are good): ' + str(ser_cor))
 
     model_fitted.plot_acorr()
 
@@ -182,15 +183,26 @@ def check_ser_corr(model_fitted):
     return out
 
 
-def inv_diff(df_orig_column, df_diff_column, periods):
-    # TODO
-    # Generate np.array for the diff_inv function - it includes first n values(n =
-    # periods) of original data & further diff values of given periods
-    value = np.array(df_orig_column[:periods].tolist()+df_diff_column[periods:].tolist())
+def inv_diff(df_orig_column, df_diff_column, n_diff):
+    if n_diff == 0:
+        return df_diff_column
 
-    # Generate np.array with inverse diff
-    inv_diff_vals = diff_inv(value, periods, 1)[periods:]
-    return inv_diff_vals
+    x = df_orig_column.tolist()
+    x_diff = df_diff_column.tolist()
+    if n_diff == 1:
+        x_0 = x[0]
+    elif n_diff == 2:
+        x_0 = x[1] - x[0]
+    elif n_diff > 2:
+        raise Exception('Re-transformation: only support second order differencing and lower')
+    inv_values = np.r_[x_0, x_diff].cumsum()
+    inv_series = pd.Series(inv_values)
+
+    if n_diff == 1:
+        return inv_series
+    else:
+        n_diff = n_diff - 1
+        return inv_diff(df_orig_column, inv_series, n_diff)
 
 
 def test(series):
