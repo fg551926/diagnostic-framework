@@ -1,13 +1,13 @@
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
-from behaviordisc import cp_detection_KSWIN, tp_detection
+from behaviordisc import cp_detection_KSWIN, tp_detection, cp_detection_ADWIN
 import re
 from statsmodels.tsa.stattools import adfuller, acf
 from scipy.fftpack import fft, fftfreq
 from math import ceil
 
-EXPECTED_PERIODS = {'1H': [24, 168, 672], # expected periods for seasonal patterns: Later can be set by user
+EXPECTED_PERIODS = {'1H': [24, 168, 672],  # expected periods for seasonal patterns: Later can be set by user
                     '8H': [3, 21, 84],
                     '1D': [7, 28, 352],
                     '7D': [4, 48]}
@@ -67,16 +67,30 @@ class Sdl:
         self.series = self.data.to_numpy()
         self.columns = self.data.columns
         self.tw = re.findall(r'\d+[A-Z]', self.columns[0])[0]  # time window of sd_log
+        self.aspect = self.columns[0].split('_')[0] # column name indicates which aspect
         #  variables as string
-        self.arrival_rate = [s for s in self.columns if "arrival" in s.lower()][0]
-        self.finish_rate = [s for s in self.columns if "finish" in s.lower()][0]
-        self.num_unique_resource = [s for s in self.columns if "resource" in s.lower()][0]
-        self.process_active_time = [s for s in self.columns if "active" in s.lower()][0]
-        self.service_time = [s for s in self.columns if "service" in s.lower()][0]
+        self.arrival_rate = None
+        self.finish_rate = None
+        self.num_unique_resource = None
+        self.process_active_time = None
+        self.service_time = None
         # TODO
-        self.time_in_process = [self.columns[5]][0]
-        self.waiting_time = [s for s in self.columns if "waiting" in s.lower()][0]
-        self.num_in_process = [self.columns[7]][0]
+        self.time_in_process = None
+        self.waiting_time = None
+        self.num_in_process = None
+
+        self.avg_arrival_rate = None
+        self.avg_duration = None
+        self.whole_duration = None
+        self.avg_waiting = None
+        self.whole_waiting = None
+        self.waiting_events = None
+        self.finished_events = None
+        self.idle_time = None
+        self.inprocess_events = None
+        self.unique_resources = None
+        self.engaged_resources = None
+        self.load_data()
 
         self.isStationary = stationary_test(self.data)
         self.period = self.estimate_period()
@@ -85,8 +99,35 @@ class Sdl:
         self.relations = {}
         self.changepoints = {}
         self.turningpoints = {}
-        # self.calc_turning_points()
+        self.calc_turning_points()
         self.behavior = {}
+
+    def load_data(self):
+        aspect = self.aspect
+        if aspect.lower() == 'general' or aspect.lower() == 'organizational':
+            self.arrival_rate = [s for s in self.columns if "arrival" in s.lower()][0]
+            self.finish_rate = [s for s in self.columns if "finish" in s.lower()][0]
+            self.num_unique_resource = [s for s in self.columns if "resource" in s.lower()][0]
+            self.process_active_time = [s for s in self.columns if "active" in s.lower()][0]
+            self.service_time = [s for s in self.columns if "service" in s.lower()][0]
+            # TODO
+            self.time_in_process = [self.columns[5]][0]
+            self.waiting_time = [s for s in self.columns if "waiting" in s.lower()][0]
+            self.num_in_process = [self.columns[7]][0]
+
+        if aspect.lower() == 'res' or aspect.lower() == 'act':
+            self.avg_arrival_rate = [s for s in self.columns if "avg_arrival" in s.lower()][0]
+            self.avg_duration = [s for s in self.columns if "avg_duration" in s.lower()][0]
+            self.whole_duration = [s for s in self.columns if "whole_duration" in s.lower()][0]
+            self.avg_waiting = [s for s in self.columns if "avgwaiting" in s.lower()][0]
+            self.whole_waiting = [s for s in self.columns if "wholewaiting" in s.lower()][0]
+            self.waiting_events = [s for s in self.columns if "waiting_events" in s.lower()][0]
+            self.finished_events = [s for s in self.columns if "finished_events" in s.lower()][0]
+            self.idle_time = [s for s in self.columns if "idle_time" in s.lower()][0]
+            self.inprocess_events = [s for s in self.columns if "inprocess_events" in s.lower()][0]
+            self.unique_resources = [s for s in self.columns if "unique_resources" in s.lower()][0]
+            self.engaged_resources = [s for s in self.columns if "engaged_resources" in s.lower()][0]
+
 
     def preprocess_rawData(self):
         #  TODO, currently expecting Active (preprocessed) sdLog
@@ -113,6 +154,7 @@ class Sdl:
 
         for i, col in zip(ax, self.columns):
             detected = cp_detection_KSWIN(self.get_points(col), period=self.tw)
+            #detected = cp_detection_ADWIN(self.get_points(col))
             if not detected:
                 continue
             i.axvspan(0, detected[0], label="Change Point", color="red", alpha=0.3)
@@ -124,17 +166,18 @@ class Sdl:
 
     def calc_turning_points(self):
         for feat in self.columns:
-            series = self.get_points(feat)
-            #period = get_period(self.tw, n_weeks=1)
+            series = self.data[feat]
+            # period = get_period(self.tw, n_weeks=1)
             tps = tp_detection(series, period=self.period)
-            self.turningpoints[feat] = tps.to_numpy()
+            self.turningpoints[feat] = tps
 
     def estimate_period(self):  # estimates period based on arrival rate in seasonal pattern
         """
         1) estimates period by computing FFT (periodogram) and find Time Periods within the Top 3 Highest Power
         2) compare period to expected ones, if they match compute acf to check significance
         """
-        series = self.get_points(self.arrival_rate)
+
+        series = self.get_points(self.columns[0])
         if not self.isStationary:
             series = np.diff(series)
 
@@ -155,7 +198,7 @@ class Sdl:
 
         time_periods_from_fft = 1 / freqs[top_powers]
         time_periods = time_periods_from_fft.astype(int)
-        print(time_periods)
+        print('Recommended time periods: ' + str(time_periods))
 
         time_lags_expected = EXPECTED_PERIODS[self.tw]
         # One of the seasonality returned from FFT should be within range of Expected time period
@@ -163,7 +206,7 @@ class Sdl:
             nearest_time_lag = time_periods.flat[np.abs(time_periods - time_lag).argmin()]
 
             # Using 5% for range comaprison
-            #tmp = range(time_lag - ceil(0.05 * time_lag), time_lag + ceil(0.05 * time_lag))
+            # tmp = range(time_lag - ceil(0.05 * time_lag), time_lag + ceil(0.05 * time_lag))
             if nearest_time_lag in range(
                     time_lag - ceil(0.05 * time_lag),
                     time_lag + ceil(0.05 * time_lag)):
@@ -187,3 +230,5 @@ class Sdl:
             else:
                 print('Seasonality could not be identified')
                 return None
+
+    # def summary(self):
