@@ -23,11 +23,11 @@ def cp_detection_binary_segmentation(points):
     return my_bkps
 
 
-def cp_detection_KSWIN(points, period=None, seperate_plot=False):
+def cp_detection_KSWIN(points, period=None, show_plot=False):
     # Kolmogorov-Smirnov test
     from skmultiflow.drift_detection import KSWIN
     window_size, stat_size = get_windows_size(period)
-    kswin = KSWIN(alpha=0.01, window_size=window_size, stat_size=stat_size)
+    kswin = KSWIN(alpha=0.05, window_size=60, stat_size=40)
     # Store detection
     detections = []
     p_values = {}
@@ -41,7 +41,7 @@ def cp_detection_KSWIN(points, period=None, seperate_plot=False):
             detections.append(i)
             p_values[i] = kswin.p_value
     print("Number of detections: " + str(len(detections)))
-    if seperate_plot:
+    if show_plot:
         rpt.show.display(points, detections, figsize=(10, 6))
         plt.title('Change Point Detection: Kolmogorov-Smirnov Windowing')
         plt.show()
@@ -61,6 +61,20 @@ def cp_detection_ADWIN(points):
     rpt.show.display(points, detections, figsize=(10, 6))
     plt.title('Change Point Detection: ADWIN')
     plt.show()
+    return detections
+
+def cp_detection_PELT(points, show_plot=False):
+    # change point detection using pelt search method
+    model = 'rbf'  # "l1" "l2", "rbf"
+    algo = rpt.Pelt(model=model, min_size=3, jump=5).fit(points)
+    my_bkps = algo.predict(pen=3)
+
+    # show results
+    if show_plot:
+        fig, (ax,) = rpt.display(points, my_bkps, figsize=(10, 6))
+        plt.show()
+
+    return my_bkps
 
 
 def decompostion_STL(series, period=None, title=''):
@@ -79,10 +93,13 @@ def tp_detection(series, period=None):  # series numpyarray
     :param period: period for detecting trend cycle in decomposition. If none take whole series as input
     :return: returns pandas series of turning points
     """
-    stl = STL(series, period=period, robust=True)
-    res_robust = stl.fit()
-    trend_x = res_robust.trend
-    series_x = pd.Series(trend_x)
+    if period is not None:
+        stl = STL(series, period=period, robust=True)
+        res_robust = stl.fit()
+        trend_x = res_robust.trend
+        series_x = pd.Series(trend_x)
+    else:
+        series_x = series
 
     N = 1  # number of iterations
     s_h = series_x.dropna().copy()  # make a series of Highs
@@ -110,8 +127,8 @@ def get_windows_size(tw):
         window_size = 2 * 7
         stat_size = 7
     elif tw == '7D':
-        window_size = 8
-        stat_size = 4
+        window_size = 4
+        stat_size = 1
     else:
         window_size = 100
         stat_size = 40
@@ -138,6 +155,8 @@ def subseqeuence_clustering(sequence, changepoints, y_label='y', norm=False):
     X = []
     i = 0
     end_p = [len(sequence) - 1]
+    if end_p[0] < changepoints[-1]: # Pelt gives last point as changepoint for visualisation purposes. Handle that
+        changepoints.pop()
     for cp in changepoints + end_p:
         X.append(sequence[i:cp])
         index = 'sub_' + str(i) + '_' + str(cp)
