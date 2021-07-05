@@ -1,14 +1,18 @@
 """
 - whole clustering of multivariate using k-means and dtw
-- granger causation matrix between all features -> Relation Direction Detection
+- granger causation matrix between all features -> Relation Direction Detection (linear and non-linear)
 - pearson correlation between all features -> Relation Type Detection (only linear)
 - distance correlation between all features -> Relation Type Detection (linear and non-linear)
+
+- causation matrix between two SDLogs
+- correlation between two SDLogs
 """
 import matplotlib.pyplot as plt
 import pandas as pd
 import numpy as np
 import seaborn as sns
 from statsmodels.tsa.stattools import grangercausalitytests
+import nonlincausality as nlc
 
 
 def dtw_visual(x, y):  # shape X, Y np.array([0., 0, 1, 2, 1, 0, 2, 1, 0, 0])
@@ -102,7 +106,7 @@ def k_means_clustering(sd_log):
     return cluster_metrics_dict
 
 
-def grangers_causation_matrix(sd_log, test='ssr_ftest', verbose=False, maxlag=4):
+def grangers_causation_matrix(sd_log, test='ssr_ftest', plot=False, save_hm=False, outputpath=None, verbose=False, maxlag=6):
     """
     Check Granger Causality of all possible combinations of the Time series. The values in the table
     are the P-Values.
@@ -140,26 +144,135 @@ def grangers_causation_matrix(sd_log, test='ssr_ftest', verbose=False, maxlag=4)
     df.columns = [var + '_x' for var in variables]
     df.index = [var + '_y' for var in variables]
     print(relations)
-    plot_heatmap(data=df, title="Grangers Causality Among Features")
+    if plot:
+        plot_heatmap(data=df, title="Grangers Causality Among Features", save_plot=save_hm, outputpath=outputpath)
     return df, relations, exogenous_factors
 
 
-def corr_pearson(sd_log):
+def non_linear_granger_causation(sd_log, verbose=False, plot=False, save_hm=False, outputpath=None, maxlag=6):
+    if sd_log.isStationary:
+        data = sd_log.data
+    else:
+        data, n_diff = sd_log.data_diff
+    relations = {}
+    exogenous_factors = []
+    # TODO constant colums lead to error
+    # data.drop(columns=[sd_log.waiting_time], inplace=True)
+    #  drop constant columns
+    data = data.loc[:, (data != data.iloc[0]).any()]
+    variables = data.columns
+    df = pd.DataFrame(np.zeros((len(variables), len(variables))), columns=variables, index=variables)
+    for t1 in df.columns:
+        for t2 in df.index:
+            results_ARIMAX = nlc.nonlincausalityARIMAX(data[[t2, t1]].to_numpy(), d=0, maxlag=maxlag, plot=False)
+            # results_NN = nlc.nonlincausalityNN(data[[t2, t1]].to_numpy(), maxlag=maxlag, NN_config=['d', 'dr', 'd', 'dr'],
+            #                                    NN_neurons=[250, 0.1, 100, 0.1], run=10, epochs_num=[50, 50],
+            #                                    learning_rate=[0.001, 0.0001], batch_size_num=64, plot=True,
+            #                                    verbose=False)
+            p_values = [round(results_ARIMAX[i + 1][0][0]['Wilcoxon test'][0][1], 4) for i in range(maxlag)]
+            if verbose:
+                print(f'Y = {t2}, X = {t1}, P Values = {p_values}')
+            min_p_value = np.min(p_values)
+            lag = p_values.index(min_p_value) + 1
+            df.loc[t2, t1] = min_p_value
+            if min_p_value < 0.05:
+                relations[(t2, t1)] = lag
+            else:
+                exogenous_factors.append((t2, t1))
+
+    df.columns = [var + '_x' for var in variables]
+    df.index = [var + '_y' for var in variables]
+    print(relations)
+    if plot:
+        plot_heatmap(data=df, title="Nonlinear (NN) Grangers Causality Among Features",
+                     save_plot=save_hm, outputpath=outputpath)
+    return df, relations, exogenous_factors
+
+
+def grangers_causation_matrix_2sdlogs(sd_log_one, sd_log_two, test='ssr_ftest', plot=False, save_hm=False, outputpath=None, verbose=False, maxlag=6):
+    """
+    Check Granger Causality of two SDLogs (sd_log_one causes sd_log_two)
+    If p_value < 0.05 then the corresponding X causes the Y and the relation is saved in the relations array
+    with the desired lag: [(t2,t1)]: #lag -> t2 is caused by t1 in #lag
+
+    sd_log      : sd_log object
+    """
+    if sd_log_one.isStationary:
+        data_one = sd_log_one.data
+    else:
+        data_one, n_diff_one = sd_log_one.data_diff
+
+    if sd_log_two.isStationary:
+        data_two = sd_log_two.data
+    else:
+        data_two, n_diff_two = sd_log_two.data_diff
+
+    data_one = data_one.loc[:, (data_one != data_one.iloc[0]).any()]
+    data_two = data_two.loc[:, (data_two != data_two.iloc[0]).any()]
+    data = pd.concat([data_one, data_two], axis=1).fillna(0)
+    relations = {}
+    exogenous_factors = []
+    # TODO constant colums lead to error
+    # data.drop(columns=[sd_log.waiting_time], inplace=True)
+    #  drop constant columns
+    data = data.loc[:, (data != data.iloc[0]).any()]
+    variables_one = data_one.columns
+    variables_two = data_two.columns
+    df = pd.DataFrame(np.zeros((len(variables_one), len(variables_two))), columns=variables_two, index=variables_one)
+    for t1 in df.columns:
+        for t2 in df.index:
+            test_result = grangercausalitytests(data[[t2, t1]], maxlag=maxlag, verbose=False)
+            p_values = [round(test_result[i + 1][0][test][1], 4) for i in range(maxlag)]
+            if verbose:
+                print(f'Y = {t2}, X = {t1}, P Values = {p_values}')
+            min_p_value = np.min(p_values)
+            lag = p_values.index(min_p_value) + 1
+            df.loc[t2, t1] = min_p_value
+            if min_p_value < 0.05:
+                relations[(t2, t1)] = lag
+            else:
+                exogenous_factors.append((t2, t1))
+
+    df.columns = [var + '_x' for var in variables_two]
+    df.index = [var + '_y' for var in variables_one]
+    print(relations)
+    if plot:
+        plot_heatmap(data=df, title="Grangers Causality Among two SDLogs", save_plot=save_hm, outputpath=outputpath)
+    return df, relations, exogenous_factors
+
+
+def corr_pearson(sd_log, sd_log2=None, plot=False, save_hm=False, outputpath=None):
     """
     Plots a heatmap with values as pearson correlation among all features for linear relation type detection
-    :param sd_log: sd_log object
+    @param sd_log2: second sd_log object - only if you would like to find relations between two logs i.e. activities
+    @param sd_log: sd_log object
+    @param outputpath:
+    @param save_hm:
+    @param plot:
     :return: return df.corr() of the sd_log
     """
-    data = sd_log.data.corr()
-    plot_heatmap(data=data, title="Pearson's Correlation Among Features")
+    data1 = sd_log.data
+    #  drop constant columns
+    data1 = data1.loc[:, (data1 != data1.iloc[0]).any()]
+    if sd_log2:
+        data2 = sd_log2.data.loc[:, (sd_log2.data != sd_log2.data.iloc[0]).any()]
+        data = pd.concat([data1, data2], axis=1, keys=['df1', 'df2']).corr().loc['df2', 'df1']
+        title = "Pearson's Correlation Among two SDLogs"
+    else:
+        data = data1.corr()
+        title = "Pearson's Correlation Among Features"
+    if plot:
+        plot_heatmap(data=data, title=title, save_plot=save_hm, outputpath=outputpath)
     return data
 
 
-def corr_distance(sd_log):
+def corr_distance(sd_log, plot=False, save_hm=False, outputpath=None):
     # long runtime
     from scipy.spatial.distance import pdist, squareform
     import dcor
     data = sd_log.data
+    #  drop constant columns
+    data = data.loc[:, (data != data.iloc[0]).any()]
     feat_names = sd_log.columns.tolist()
     df_dcor = pd.DataFrame(index=feat_names, columns=feat_names)
 
@@ -178,21 +291,25 @@ def corr_distance(sd_log):
 
         k += 1
     # plot as heatmap
-    plot_heatmap(df_dcor.astype(float), title="Distance Correlation Among Features")
+    if plot:
+        plot_heatmap(df_dcor.astype(float), title="Distance Correlation Among Features",
+                     save_plot=save_hm, outputpath=outputpath)
     return df_dcor
 
 
-def plot_heatmap(data, title):
+def plot_heatmap(data, title, show_plot=True, save_plot=False, outputpath=None):
     # plot as heatmap
     fig, ax = plt.subplots(figsize=(12, 9))
-    sns.heatmap(
-        data,
-        cmap=sns.diverging_palette(220, 10, as_cmap=True),
-        square=True,
-        cbar_kws={'shrink': .9},
-        ax=ax,
-        annot=True,
-        linewidths=0.1, vmax=1.0, linecolor='white',
-        annot_kws={'fontsize': 12})
+    sns_hm =sns.heatmap(data,
+                        cmap=sns.diverging_palette(220, 20, as_cmap=True),
+                        square=True,
+                        cbar_kws={'shrink': .9},
+                        ax=ax,
+                        annot=True,
+                        linewidths=0.1, vmax=1.0, linecolor='white',
+                        annot_kws={'fontsize': 12})
     plt.title(title)
-    plt.show()
+    if show_plot:
+        plt.show()
+    if save_plot:
+        sns_hm.get_figure().savefig(outputpath)

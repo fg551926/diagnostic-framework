@@ -55,7 +55,8 @@ def auto_arima(series, freq):
     #     freq = 4
     # else:
     #     freq = 1
-
+    if not freq:
+        freq = 1
     model = pm.auto_arima(series, start_p=1, start_q=1,
                           test='adf',  # use adftest to find optimal 'd'
                           max_p=3, max_q=3,  # maximum p and q
@@ -72,7 +73,7 @@ def auto_arima(series, freq):
     return model
 
 
-def uni_forecast(series, n_periods, freq):
+def uni_forecast(series, n_periods, freq, save_plot=False, outputpath=None):
     """
     This method used the auto_arima model to forecast univariate time series using the SARIMA model.
     The auto_model iterates over different combinations of the parameters and uses the AIC to find the optimal one
@@ -80,6 +81,8 @@ def uni_forecast(series, n_periods, freq):
     :param n_periods: number of steps we would like to forecast
     :param freq: periodicity of sd_log. Use period in SdLog Obejct
     :return: predicted values as df with corresponding index
+    @param save_plot:
+    @param outputpath:
     """
     # Forecast
     model = auto_arima(series, freq)
@@ -101,8 +104,10 @@ def uni_forecast(series, n_periods, freq):
                      color='k', alpha=.15)
 
     plt.title("Forecast of " + str(n_periods) + " periods")
+    if save_plot:
+        plt.savefig(outputpath)
     plt.show()
-    return fc_series
+    return fc_series, model
 
 
 def arima_diagnostic(model):
@@ -115,15 +120,17 @@ def arima_diagnostic(model):
     plt.show()
 
 
-def multi_forecast(sd_log, variables, n_period):  # sd_log object, variables list of features column names
+def multi_forecast(sd_log, variables, n_period, save_plot=False, outputpath=None):  # sd_log object, variables list of features column names
     """
 
     :param sd_log: sd_log object
     :param variables: features you would like to use for the multivariate forecast as list
     :param n_period: steps you would like to predict
     :return:
+    @param outputpath:
+    @param save_plot:
     """
-    max_lag = 5
+    max_lag = 6
     # Check for stationary
     if sd_log.isStationary:
         data = sd_log.data[variables]
@@ -137,6 +144,8 @@ def multi_forecast(sd_log, variables, n_period):  # sd_log object, variables lis
     model = VAR(data)
     # Look for minimum AIC/BIC and corresponding lag to fit model
     lag = min(model.select_order(maxlags=max_lag).selected_orders.values())
+    lag = 1
+
     results = model.fit(lag)
     print(results.summary())
     var_diagnostic(results)
@@ -144,10 +153,11 @@ def multi_forecast(sd_log, variables, n_period):  # sd_log object, variables lis
     lag_order = results.k_ar
     fc = results.forecast(data.values[-lag_order:], n_period)
     df_fc = pd.DataFrame(fc, index=data.index[-n_period:])
-    # TODO inverting resulting forecast
-    inv_diff(sd_log.data[sd_log.finish_rate], data[sd_log.finish_rate], ndiff)
+    # inverting resulting forecast
+    # inv_diff(sd_log.data[sd_log.finish_rate], data[sd_log.finish_rate], ndiff)
+    if save_plot:
+        plt.savefig(outputpath)
     plt.show()
-
     return df_fc
 
 

@@ -1,7 +1,7 @@
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
-from behaviordisc import cp_detection_KSWIN, tp_detection, cp_detection_ADWIN
+from behaviordisc import cp_detection_KSWIN, tp_detection, cp_detection_PELT
 import re
 from statsmodels.tsa.stattools import adfuller, acf
 from scipy.fftpack import fft, fftfreq
@@ -22,10 +22,13 @@ def stationary_test(data):  # df input
     :return:
     """
     for feat in data.columns:
-        result = adfuller(data[feat], autolag='AIC')
-        if result[1] > 0.05:
-            print(str(feat) + ' is not stationary')
-            return False
+        try:
+            result = adfuller(data[feat], autolag='AIC')
+            if result[1] > 0.05:
+                print(str(feat) + ' is not stationary')
+                return False
+        except:
+            pass
     return True
 
 
@@ -99,7 +102,7 @@ class Sdl:
         self.relations = {}
         self.changepoints = {}
         self.turningpoints = {}
-        self.calc_turning_points()
+        # self.calc_turning_points()
         self.behavior = {}
 
     def load_data(self):
@@ -148,13 +151,13 @@ class Sdl:
         if save:
             plt.savefig('pictures/' + title)
 
-    def plot_all_with_cp(self):
+    def plot_all_with_cp(self, outputpath=None):
         ax = self.data.plot(subplots=True, xlabel="index",
                             figsize=(5, 10), grid=True)
 
         for i, col in zip(ax, self.columns):
-            detected = cp_detection_KSWIN(self.get_points(col), period=self.tw)
-            #detected = cp_detection_ADWIN(self.get_points(col))
+            #detected = cp_detection_KSWIN(self.get_points(col), period=self.tw)
+            detected = cp_detection_PELT(self.get_points(col))
             if not detected:
                 continue
             i.axvspan(0, detected[0], label="Change Point", color="red", alpha=0.3)
@@ -163,6 +166,8 @@ class Sdl:
                 i.axvspan(detected[s + 1], detected[s + 2], label="Change Point", color="red", alpha=0.3)
             i.axvspan(detected[-1], len(self.data), label="Change Point", color="green", alpha=0.3)
         plt.show()
+        if outputpath:
+            plt.savefig(outputpath)
 
     def calc_turning_points(self):
         for feat in self.columns:

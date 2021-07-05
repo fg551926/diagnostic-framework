@@ -1,6 +1,7 @@
 """
 - changepoint detetction using sliding window and ks-test
 - decomposition of univariate ts
+- turning points
 - clustering of subsequences
 """
 import matplotlib.pyplot as plt
@@ -23,11 +24,12 @@ def cp_detection_binary_segmentation(points):
     return my_bkps
 
 
-def cp_detection_KSWIN(points, period=None, show_plot=False):
+def cp_detection_KSWIN(points, window_size=100, stat_size=40, period=None, show_plot=False, save_plot=False, outputpath=None):
     # Kolmogorov-Smirnov test
     from skmultiflow.drift_detection import KSWIN
-    window_size, stat_size = get_windows_size(period)
-    kswin = KSWIN(alpha=0.05, window_size=60, stat_size=40)
+    if period:
+        window_size, stat_size = get_windows_size(period)
+    kswin = KSWIN(alpha=0.05, window_size=window_size, stat_size=stat_size)
     # Store detection
     detections = []
     p_values = {}
@@ -41,10 +43,13 @@ def cp_detection_KSWIN(points, period=None, show_plot=False):
             detections.append(i)
             p_values[i] = kswin.p_value
     print("Number of detections: " + str(len(detections)))
-    if show_plot:
+    if show_plot or save_plot:
         rpt.show.display(points, detections, figsize=(10, 6))
         plt.title('Change Point Detection: Kolmogorov-Smirnov Windowing')
-        plt.show()
+        if show_plot:
+            plt.show()
+        elif save_plot:
+            plt.savefig(outputpath)
     return detections
 
 
@@ -63,16 +68,20 @@ def cp_detection_ADWIN(points):
     plt.show()
     return detections
 
-def cp_detection_PELT(points, show_plot=False):
+
+def cp_detection_PELT(points, show_plot=False, save_plot=False, outputpath=None, pen=3):
     # change point detection using pelt search method
     model = 'rbf'  # "l1" "l2", "rbf"
-    algo = rpt.Pelt(model=model, min_size=3, jump=5).fit(points)
-    my_bkps = algo.predict(pen=3)
+    algo = rpt.Pelt(model=model, min_size=1, jump=1).fit(points)
+    my_bkps = algo.predict(pen=pen)
 
     # show results
-    if show_plot:
+    if show_plot or save_plot:
         fig, (ax,) = rpt.display(points, my_bkps, figsize=(10, 6))
-        plt.show()
+        if show_plot:
+            plt.show()
+        elif save_plot:
+            plt.savefig(outputpath)
 
     return my_bkps
 
@@ -136,7 +145,8 @@ def get_windows_size(tw):
     return window_size, stat_size
 
 
-def subseqeuence_clustering(sequence, changepoints, y_label='y', norm=False):
+def subseqeuence_clustering(sequence, changepoints, y_label='y', show_plot=False, save_plot=False, norm=False,
+                            outputpath=None):
     """
     Clusters subsequences of time series indicated by the changepoints variable.
     Uses silhouette score to determine the number of clusters
@@ -155,7 +165,7 @@ def subseqeuence_clustering(sequence, changepoints, y_label='y', norm=False):
     X = []
     i = 0
     end_p = [len(sequence) - 1]
-    if end_p[0] < changepoints[-1]: # Pelt gives last point as changepoint for visualisation purposes. Handle that
+    if end_p[0] < changepoints[-1]:  # Pelt gives last point as changepoint for visualisation purposes. Handle that
         changepoints.pop()
     for cp in changepoints + end_p:
         X.append(sequence[i:cp])
@@ -175,8 +185,14 @@ def subseqeuence_clustering(sequence, changepoints, y_label='y', norm=False):
         model_tst = TimeSeriesKMeans(n_clusters=n, metric="dtw", n_init=10)
         model_tst.fit(X)
         sil_scores[n] = (silhouette_score(X, model_tst.predict(X), metric="dtw"))
-
-    opt_k = max(sil_scores, key=sil_scores.get)
+    if len(changepoints) == 2:
+        opt_k = 2
+    elif len(changepoints) == 1:
+        opt_k = 2
+    elif len(changepoints) == 0:
+        opt_k = 1
+    else:
+        opt_k = max(sil_scores, key=sil_scores.get)
     print('Number of Clusters in subsequence clustering: ' + str(opt_k))
     model = TimeSeriesKMeans(n_clusters=opt_k, metric="dtw", n_init=10)
     labels = model.fit_predict(X)
@@ -212,6 +228,10 @@ def subseqeuence_clustering(sequence, changepoints, y_label='y', norm=False):
     plt.title('Subsequence k-means Clustering')
     plt.xlabel('Time index')
     plt.ylabel(y_label)
-    plt.show()
+    if show_plot:
+        plt.show()
+    if save_plot:
+        plt.savefig(outputpath)
+
 
     return cluster_metrics_dict
