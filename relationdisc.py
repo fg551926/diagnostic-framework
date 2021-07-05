@@ -150,19 +150,33 @@ def grangers_causation_matrix(sd_log, test='ssr_ftest', plot=False, save_hm=Fals
     return df, relations, exogenous_factors
 
 
-def non_linear_granger_causation(sd_log, verbose=False, plot=False, save_hm=False, outputpath=None, maxlag=6):
+def non_linear_granger_causation(sd_log, sd_log2=None, verbose=False, plot=False, save_hm=False, outputpath=None, maxlag=6):
     if sd_log.isStationary:
-        data = sd_log.data
+        data_one = sd_log.data
     else:
-        data, n_diff = sd_log.data_diff
+        data_one, n_diff_d1 = sd_log.data_diff
+    if sd_log2:
+        if sd_log2.isStationary:
+            data_two = sd_log2.data
+        else:
+            data_two, n_diff_d2 = sd_log2.data_diff
+        data_two = data_two.loc[:, (data_two != data_two.iloc[0]).any()]
+
     relations = {}
     exogenous_factors = []
     # TODO constant colums lead to error
     # data.drop(columns=[sd_log.waiting_time], inplace=True)
     #  drop constant columns
-    data = data.loc[:, (data != data.iloc[0]).any()]
-    variables = data.columns
-    df = pd.DataFrame(np.zeros((len(variables), len(variables))), columns=variables, index=variables)
+    data_one = data_one.loc[:, (data_one != data_one.iloc[0]).any()]
+    variables = data_one.columns
+    if sd_log2:
+        variables2 = data_two.columns
+        df = pd.DataFrame(np.zeros((len(variables2), len(variables))), columns=variables, index=variables2)
+        data = pd.concat([data_one, data_two], axis=1).fillna(0)
+    else:
+        df = pd.DataFrame(np.zeros((len(variables), len(variables))), columns=variables, index=variables)
+        data = data_one
+
     for t1 in df.columns:
         for t2 in df.index:
             results_ARIMAX = nlc.nonlincausalityARIMAX(data[[t2, t1]].to_numpy(), d=0, maxlag=maxlag, plot=False)
@@ -182,10 +196,16 @@ def non_linear_granger_causation(sd_log, verbose=False, plot=False, save_hm=Fals
                 exogenous_factors.append((t2, t1))
 
     df.columns = [var + '_x' for var in variables]
-    df.index = [var + '_y' for var in variables]
+    if sd_log2:
+        df.index = [var + '_y' for var in variables2]
+    else:
+        df.index = [var + '_y' for var in variables]
     print(relations)
     if plot:
-        plot_heatmap(data=df, title="Nonlinear (NN) Grangers Causality Among Features",
+        title = "Nonlinear (NN) Grangers Causality Among Features"
+        if sd_log2:
+            title = "Nonlinear (NN) Grangers Causality Among two SDLogs"
+        plot_heatmap(data=df, title=title,
                      save_plot=save_hm, outputpath=outputpath)
     return df, relations, exogenous_factors
 

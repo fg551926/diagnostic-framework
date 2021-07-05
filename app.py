@@ -14,7 +14,7 @@ from el import El
 from sdl import Sdl
 from forecasting import multi_forecast, uni_forecast
 from behaviordisc import cp_detection_PELT, cp_detection_KSWIN
-from relationdisc import grangers_causation_matrix_2sdlogs, corr_pearson, corr_distance_2sdLogs
+from relationdisc import *
 import ui_single_perspective
 from RelashionDetector import Relation_Detector
 from OrganizationalAspect import organization_aspect
@@ -262,8 +262,9 @@ def get_multiple_perspective_result():
         if checked_granger == 'granger_linear':
             grangers_causation_matrix_2sdlogs(sd_log_one=sdl1, sd_log_two=sdl2, plot=True, save_hm=True,
                                               outputpath=path_granger)
-        else:
-            pass
+        elif checked_granger == 'granger_non_linear':
+            non_linear_granger_causation(sd_log=sdl1, sd_log2=sdl2, plot=True, save_hm=True,
+                                         outputpath=path_granger, maxlag=6)
 
         path_corr = os.path.join('static', 'images', 'pearson_2sdlogs.png')
         if checked_corr == 'pearson_corr':
