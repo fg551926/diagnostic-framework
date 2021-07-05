@@ -13,6 +13,7 @@ import numpy as np
 import seaborn as sns
 from statsmodels.tsa.stattools import grangercausalitytests
 import nonlincausality as nlc
+import dcor
 
 
 def dtw_visual(x, y):  # shape X, Y np.array([0., 0, 1, 2, 1, 0, 2, 1, 0, 0])
@@ -268,12 +269,11 @@ def corr_pearson(sd_log, sd_log2=None, plot=False, save_hm=False, outputpath=Non
 
 def corr_distance(sd_log, plot=False, save_hm=False, outputpath=None):
     # long runtime
-    from scipy.spatial.distance import pdist, squareform
     import dcor
     data = sd_log.data
     #  drop constant columns
     data = data.loc[:, (data != data.iloc[0]).any()]
-    feat_names = sd_log.columns.tolist()
+    feat_names = data.columns.tolist()
     df_dcor = pd.DataFrame(index=feat_names, columns=feat_names)
 
     k = 0
@@ -293,6 +293,36 @@ def corr_distance(sd_log, plot=False, save_hm=False, outputpath=None):
     # plot as heatmap
     if plot:
         plot_heatmap(df_dcor.astype(float), title="Distance Correlation Among Features",
+                     save_plot=save_hm, outputpath=outputpath)
+    return df_dcor
+
+
+def corr_distance_2sdLogs(sd_log1, sd_log2, plot=False, save_hm=False, outputpath=None):
+    # long runtime
+    data1 = sd_log1.data
+    data2 = sd_log2.data
+    #  drop constant columns
+    data1 = data1.loc[:, (data1 != data1.iloc[0]).any()]
+    data2 = data2.loc[:, (data2 != data2.iloc[0]).any()]
+
+    feat_names1 = data1.columns.tolist()
+    feat_names2 = data1.columns.tolist()
+    df_dcor = pd.DataFrame(index=feat_names1, columns=feat_names2)
+
+    for feat_i in feat_names1:
+        tmp = data1.loc[:, feat_i]
+        v1 = data1.loc[:, feat_i].to_numpy()
+
+        for feat_j in feat_names2:
+            v2 = data2.loc[:, feat_j].to_numpy()
+
+            rez = dcor.distance_correlation(v1, v2)
+
+            df_dcor.loc[feat_i, feat_j] = float(rez)
+
+    # plot as heatmap
+    if plot:
+        plot_heatmap(df_dcor.astype(float), title="Distance Correlation Among two SDLogs",
                      save_plot=save_hm, outputpath=outputpath)
     return df_dcor
 
