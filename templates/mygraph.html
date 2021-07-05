@@ -1,0 +1,108 @@
+<html>
+<head>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/vis/4.16.1/vis.css" type="text/css" />
+<script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/vis/4.16.1/vis-network.min.js"> </script>
+<center>
+<h1></h1>
+</center>
+
+<!-- <link rel="stylesheet" href="../node_modules/vis/dist/vis.min.css" type="text/css" />
+<script type="text/javascript" src="../node_modules/vis/dist/vis.js"> </script>-->
+
+<style type="text/css">
+
+        #mynetwork {
+            width: 800px;
+            height: 800px;
+            background-color: #ffffff;
+            border: 1px solid lightgray;
+            position: relative;
+            float: left;
+        }
+
+        
+
+        
+
+        
+</style>
+
+</head>
+
+<body>
+<div id = "mynetwork"></div>
+
+
+<script type="text/javascript">
+
+    // initialize global variables.
+    var edges;
+    var nodes;
+    var network; 
+    var container;
+    var options, data;
+
+    
+    // This method is responsible for drawing the graph, returns the drawn network
+    function drawGraph() {
+        var container = document.getElementById('mynetwork');
+        
+        
+
+        // parsing and collecting nodes and edges from the python
+        nodes = new vis.DataSet([{"id": "EnterintoSystem", "label": "EnterintoSystem", "shape": "box"}, {"id": "SpecialPriorityAppointmentgranted", "label": "SpecialPriorityAppointmentgranted", "shape": "box"}, {"id": "InsuranceCheckPrivate", "label": "InsuranceCheckPrivate", "shape": "box"}, {"id": "InsuranceCheckStatutory", "label": "InsuranceCheckStatutory", "shape": "box"}, {"id": "Notifyaboutvacc.possibility", "label": "Notifyaboutvacc.possibility", "shape": "box"}, {"id": "Acknowledgevacc.possibility", "label": "Acknowledgevacc.possibility", "shape": "box"}, {"id": "Requestappointment", "label": "Requestappointment", "shape": "box"}, {"id": "Appointmentgranted", "label": "Appointmentgranted", "shape": "box"}, {"id": "Declinevaccination", "label": "Declinevaccination", "shape": "box"}, {"id": "Preparevaccine", "label": "Preparevaccine", "shape": "box"}, {"id": "Sendvaccinetocabine", "label": "Sendvaccinetocabine", "shape": "box"}, {"id": "Registeratvaccinationfacility", "label": "Registeratvaccinationfacility", "shape": "box"}, {"id": "FinishedRiskTalk", "label": "FinishedRiskTalk", "shape": "box"}, {"id": "SubmitDeclaration", "label": "SubmitDeclaration", "shape": "box"}, {"id": "Vaccinate", "label": "Vaccinate", "shape": "box"}, {"id": "Checkout", "label": "Checkout", "shape": "box"}, {"id": "DestroyVacc", "label": "DestroyVacc", "shape": "box"}, {"id": "CheckoutNoVacc", "label": "CheckoutNoVacc", "shape": "box"}, {"id": "SendVaccinationCertificate", "label": "SendVaccinationCertificate", "shape": "box"}, {"id": "SendInvoice", "label": "SendInvoice", "shape": "box"}, {"id": "PriorityAppointmentgranted", "label": "PriorityAppointmentgranted", "shape": "box"}, {"color": "green", "id": "start", "label": "start", "shape": "box"}, {"color": "red", "id": "end", "label": "end", "shape": "box"}]);
+        edges = new vis.DataSet([{"arrows": "to", "from": "EnterintoSystem", "to": "EnterintoSystem"}, {"arrows": "to", "from": "SpecialPriorityAppointmentgranted", "to": "EnterintoSystem"}, {"arrows": "to", "from": "InsuranceCheckPrivate", "to": "EnterintoSystem"}, {"arrows": "to", "from": "InsuranceCheckStatutory", "to": "EnterintoSystem"}, {"arrows": "to", "from": "Notifyaboutvacc.possibility", "to": "EnterintoSystem"}, {"arrows": "to", "from": "Acknowledgevacc.possibility", "to": "EnterintoSystem"}, {"arrows": "to", "from": "Requestappointment", "to": "EnterintoSystem"}, {"arrows": "to", "from": "Appointmentgranted", "to": "EnterintoSystem"}, {"arrows": "to", "from": "Declinevaccination", "to": "EnterintoSystem"}, {"arrows": "to", "from": "Preparevaccine", "to": "EnterintoSystem"}, {"arrows": "to", "from": "Sendvaccinetocabine", "to": "EnterintoSystem"}, {"arrows": "to", "from": "Registeratvaccinationfacility", "to": "EnterintoSystem"}, {"arrows": "to", "from": "FinishedRiskTalk", "to": "EnterintoSystem"}, {"arrows": "to", "from": "SubmitDeclaration", "to": "EnterintoSystem"}, {"arrows": "to", "from": "Vaccinate", "to": "EnterintoSystem"}, {"arrows": "to", "from": "Checkout", "to": "EnterintoSystem"}, {"arrows": "to", "from": "DestroyVacc", "to": "EnterintoSystem"}, {"arrows": "to", "from": "CheckoutNoVacc", "to": "EnterintoSystem"}, {"arrows": "to", "from": "SendVaccinationCertificate", "to": "EnterintoSystem"}, {"arrows": "to", "from": "SendInvoice", "to": "EnterintoSystem"}, {"arrows": "to", "from": "PriorityAppointmentgranted", "to": "EnterintoSystem"}, {"arrows": "to", "from": "EnterintoSystem", "to": "SpecialPriorityAppointmentgranted"}, {"arrows": "to", "from": "SpecialPriorityAppointmentgranted", "to": "SpecialPriorityAppointmentgranted"}, {"arrows": "to", "from": "InsuranceCheckPrivate", "to": "SpecialPriorityAppointmentgranted"}, {"arrows": "to", "from": "InsuranceCheckStatutory", "to": "SpecialPriorityAppointmentgranted"}, {"arrows": "to", "from": "Notifyaboutvacc.possibility", "to": "SpecialPriorityAppointmentgranted"}, {"arrows": "to", "from": "Acknowledgevacc.possibility", "to": "SpecialPriorityAppointmentgranted"}, {"arrows": "to", "from": "Requestappointment", "to": "SpecialPriorityAppointmentgranted"}, {"arrows": "to", "from": "Appointmentgranted", "to": "SpecialPriorityAppointmentgranted"}, {"arrows": "to", "from": "Declinevaccination", "to": "SpecialPriorityAppointmentgranted"}, {"arrows": "to", "from": "Preparevaccine", "to": "SpecialPriorityAppointmentgranted"}, {"arrows": "to", "from": "Sendvaccinetocabine", "to": "SpecialPriorityAppointmentgranted"}, {"arrows": "to", "from": "Registeratvaccinationfacility", "to": "SpecialPriorityAppointmentgranted"}, {"arrows": "to", "from": "FinishedRiskTalk", "to": "SpecialPriorityAppointmentgranted"}, {"arrows": "to", "from": "SubmitDeclaration", "to": "SpecialPriorityAppointmentgranted"}, {"arrows": "to", "from": "Vaccinate", "to": "SpecialPriorityAppointmentgranted"}, {"arrows": "to", "from": "Checkout", "to": "SpecialPriorityAppointmentgranted"}, {"arrows": "to", "from": "DestroyVacc", "to": "SpecialPriorityAppointmentgranted"}, {"arrows": "to", "from": "CheckoutNoVacc", "to": "SpecialPriorityAppointmentgranted"}, {"arrows": "to", "from": "SendVaccinationCertificate", "to": "SpecialPriorityAppointmentgranted"}, {"arrows": "to", "from": "SendInvoice", "to": "SpecialPriorityAppointmentgranted"}, {"arrows": "to", "from": "PriorityAppointmentgranted", "to": "SpecialPriorityAppointmentgranted"}, {"arrows": "to", "from": "EnterintoSystem", "to": "InsuranceCheckPrivate"}, {"arrows": "to", "from": "EnterintoSystem", "to": "InsuranceCheckStatutory"}, {"arrows": "to", "from": "InsuranceCheckStatutory", "to": "Notifyaboutvacc.possibility"}, {"arrows": "to", "from": "Notifyaboutvacc.possibility", "to": "Acknowledgevacc.possibility"}, {"arrows": "to", "from": "Requestappointment", "to": "Appointmentgranted"}, {"arrows": "to", "from": "Notifyaboutvacc.possibility", "to": "Declinevaccination"}, {"arrows": "to", "from": "Preparevaccine", "to": "Sendvaccinetocabine"}, {"arrows": "to", "from": "Sendvaccinetocabine", "to": "Registeratvaccinationfacility"}, {"arrows": "to", "from": "Registeratvaccinationfacility", "to": "FinishedRiskTalk"}, {"arrows": "to", "from": "FinishedRiskTalk", "to": "SubmitDeclaration"}, {"arrows": "to", "from": "SubmitDeclaration", "to": "Vaccinate"}, {"arrows": "to", "from": "Vaccinate", "to": "Checkout"}, {"arrows": "to", "from": "CheckoutNoVacc", "to": "DestroyVacc"}, {"arrows": "to", "from": "FinishedRiskTalk", "to": "CheckoutNoVacc"}, {"arrows": "to", "from": "Checkout", "to": "SendVaccinationCertificate"}, {"arrows": "to", "from": "Checkout", "to": "SendInvoice"}, {"arrows": "to", "from": "Checkout", "to": "PriorityAppointmentgranted"}, {"arrows": "to", "from": "start", "to": "Requestappointment"}, {"arrows": "to", "from": "start", "to": "Preparevaccine"}, {"arrows": "to", "from": "PriorityAppointmentgranted", "to": "end"}]);
+
+        // adding nodes and edges to the graph
+        data = {nodes: nodes, edges: edges};
+
+        var options = {
+    "configure": {
+        "enabled": false
+    },
+    "edges": {
+        "color": {
+            "inherit": true
+        },
+        "smooth": {
+            "enabled": false,
+            "type": "continuous"
+        }
+    },
+    "interaction": {
+        "dragNodes": true,
+        "hideEdgesOnDrag": false,
+        "hideNodesOnDrag": false
+    },
+    "physics": {
+        "enabled": false,
+        "stabilization": {
+            "enabled": true,
+            "fit": true,
+            "iterations": 1000,
+            "onlyDynamicEdges": false,
+            "updateInterval": 50
+        }
+    }
+};
+        
+        
+
+        
+
+        network = new vis.Network(container, data, options);
+	 
+        
+
+
+        
+
+        return network;
+
+    }
+
+    drawGraph();
+
+</script>
+</body>
+</html>

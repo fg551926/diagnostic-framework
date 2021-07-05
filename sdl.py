@@ -152,7 +152,7 @@ class Sdl:
             plt.savefig('pictures/' + title)
 
     def plot_all_with_cp(self, outputpath=None):
-        ax = self.data.plot(subplots=True, xlabel="index",
+        ax = self.data.plot(subplots=True, xlabel="time steps", title='Plot for all single aspects along with changepoints',
                             figsize=(5, 10), grid=True)
 
         for i, col in zip(ax, self.columns):
@@ -165,9 +165,10 @@ class Sdl:
                 i.axvspan(detected[s], detected[s + 1], label="Change Point", color="green", alpha=0.3)
                 i.axvspan(detected[s + 1], detected[s + 2], label="Change Point", color="red", alpha=0.3)
             i.axvspan(detected[-1], len(self.data), label="Change Point", color="green", alpha=0.3)
-        plt.show()
+        # plt.title('Plot for all single aspects along with changepoints')
         if outputpath:
-            plt.savefig(outputpath)
+            plt.savefig(outputpath, bbox_inches='tight')
+        plt.show()
 
     def calc_turning_points(self):
         for feat in self.columns:

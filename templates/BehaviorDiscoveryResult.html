@@ -1,0 +1,194 @@
+{% extends "base.html" %}
+
+{% block title %} Single Perspective Analysis <br> <i> Discover single process and state-based
+    aspects</i> {% endblock %}
+
+{% block content %}
+<div class="py-5">
+    <div class="container">
+        <div class="row">
+        </div>
+        <div class="row">
+            <div class="col-md-3" style=""></div>
+            <div class="col-md-3" style=""></div>
+            <div class="col-md-3" style=""></div>
+            <div class="col-md-3" style="">
+                <div>
+                    <form class="row g-3" name="extract_sec" action="BehaviorDiscoveryResult.html" method="POST"
+                          enctype="multipart/form-data">
+                        <label for="selected_aspect"><b>Choose aspect to explore</b></label>
+                        <p>
+                            <select class="form-control" id="selected_aspect" name="selected_aspect"> {% for param in
+                                params_list%}
+                                <option value="{{param}}">{{param}}</option>
+                                {% endfor %} </select>
+                        </p>
+                        <p></p>
+                        <div class="col-md-12">
+                            <button title="Select aspect" name="submit aspect" class="btn btn-primary mb-2"
+                                    id="select_aspect">Select aspect
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+        <div class="row">
+            <div class="col-md-12">
+                <h2 class="mb-4">Seasonality</h2>
+            </div>
+        </div>
+        <div class="row">
+            <div class="col-md-6"> {% if not res['period'] %}
+                <p class="lead">Seasonality could not be identified because the acf value is not significant</p>
+                {% endif %}
+                {% if res['period'] %}
+                <p class="lead">Detected period: {{ res['period'] }} time steps</p>
+                {% endif %}
+            </div>
+        </div>
+        <div class="row">
+            <div class="col-md-6">
+                <div class="col-md-12 p-3"><img class="img-fluid d-block" src="{{ res['pacf_img'] }}" width="1500">
+                    <p class="mt-2 mb-0 text-center">PACF Plot for {{ session['sd_log_filename'] }}</p>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="col-md-12 p-3"><img class="img-fluid d-block" src="{{ res['acf_img'] }}" width="1500">
+                    <p class="mt-2 mb-0 text-center">ACF Plot for {{ session['sd_log_filename'] }}</p>
+                </div>
+            </div>
+        </div>
+        <div class="row">
+            <div class="col-md-12">
+                <h2 class="mb-4" contenteditable="true">Relations in single aspects</h2>
+            </div>
+        </div>
+        <div class="row">
+            <!--Beginn table for relations filtered by aspect-->
+            {% if res['hm_corr_img'] %}
+            <div class="col-md-6" style="">
+                <div class="col-md-12 p-3"><img class="img-fluid d-block" src="{{res['hm_corr_img']}}" width="1500">
+                    <p class="mt-2 mb-0 text-center">Heatmap for {{ res['corr_type'] }} correlation over all aspects</p>
+                </div>
+            </div>
+            {% endif %}
+            {% if res['granger_causations'] %}
+            <div class="col-md-6">
+                <div class="col-md-12 p-3"><img class="img-fluid d-block" src="{{res['hm_granger_img']}}" width="1500">
+                    <p class="mt-2 mb-0 text-center">Heatmap for {{ res['granger_type'] }} granger causation over all
+                        aspects</p>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+        {% if res['granger_causations'] %}
+        <div class="row">
+            <table class="table table-striped">
+                <caption>G-caused relations for p-values above 0.05</caption>
+                <thead>
+                <tr>
+                    <!--                        <th scope="col">#</th>-->
+                    <th scope="col">Aspect</th>
+                    <th scope="col">is G-caused by</th>
+                    <th scope="col">after #lags <i>(in time steps)</i></th>
+                </tr>
+                </thead>
+                <tbody>
+                {% for key, value in res['granger_causations'].items() if selected_aspect in key %}
+                <tr>
+                    <th scope="row">{{ key[0] }}</th>
+                    <!--                        <td>{{ key[0] }} </td>-->
+                    <td> {{ key[1]}}</td>
+                    <td> {{value}}</td>
+                </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        <div class="row">
+            <div class="col-md-12"></div>
+        </div>
+        <div class="card border border-dark">
+            <div class="card-header pt-2" style="font-weight: bold">Is <i>{{ selected_aspect }} an exogenous factor?</i>
+            </div>
+            <div class="card-body">
+                {% if res['exog_factor'] %}
+                <p>Yes</p>
+                {% endif %}
+                {% if not res['exog_factor'] %}
+                <p>No</p>
+                {% endif %}
+            </div>
+        </div>
+        {% endif %}
+        {% if res['cp_img'] %}
+        <div class="row">
+            <div class="col-md-12">
+                <h2 class="py-4">Changepoints by {{ res['cp_type'] }}
+                    {% if res['clust_img'] %} along with Anomaly Detection {% endif %}
+                </h2>
+            </div>
+        </div>
+        <div class="row">
+            <div class="col-md-6 p-3"><img class="img-fluid d-block" src="{{ res['cp_img']}}" width="1500">
+                <p class="mt-2 mb-0 text-center">Changepoints by {{ res['cp_type'] }} for {{ selected_aspect }} <br>
+                    {{ res['cp_val'] }}
+                </p>
+            </div>
+            {% if res['clust_img'] %}
+            <div class="col-md-6 p-3"><img class="img-fluid d-block" src="{{ res['clust_img']}}" width="1500">
+                <p class="mt-2 mb-0 text-center">Clustered sequences by changepoints for {{ selected_aspect }} <br>
+                    {{ res['clust_clusters'] }}</p>
+            </div>
+            {% endif %}
+        </div>
+        {% endif %}
+        {% if res['uni_forecast_img'] %}
+        <div class="row">
+            <div class="col-md-12">
+                <h2 class="py-4">Univariate forecasting</h2>
+            </div>
+        </div>
+        <div class="row">
+            <div class="col-md-6 p-3"><img class="img-fluid d-block"
+                                           src="{{ res['uni_forecast_img'] }}" width="1500">
+                <p class="mt-2 mb-0 text-center">Forecasting results</p>
+            </div>
+            <div class="col-md-6" style="">
+                <div class="card border border-dark">
+                    <div class="card-header pt-2" style="font-weight: bold"> Infobox </i>
+                    </div>
+                    <div class="card-body">
+                        <p>Best model:</p>
+                        <p>{{ res['uni_model'] }}</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="row">
+            <div class="col-md-12">
+                <h2 class="py-4">Multivariate forecasting</h2>
+            </div>
+        </div>
+        <div class="row">
+            <div class="col-md-6 p-3"><img class="img-fluid d-block"
+                                           src="{{ res['multi_forecast_img'] }}" width="1500">
+                <p class="mt-2 mb-0 text-center">Forecasting results</p>
+            </div>
+            <div class="col-md-6" style="">
+                <div class="card border border-dark">
+                    <div class="card-header pt-2" style="font-weight: bold"> Infobox </i>
+                    </div>
+                    <div class="card-body">
+                        <p></p>
+                        <p></p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+{% endblock %}
