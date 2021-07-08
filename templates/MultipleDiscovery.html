@@ -9,16 +9,20 @@ Multiple Perspective Analysis <br> <i> Discover relations over multiple SdLogs <
     <form name="extract" action="MultipleDiscoveryResult.html" method="POST" enctype="multipart/form-data">
         <p><b>First SDLog:</b> <input class="form-control-file" type="file" name="SdLogOne" required/></p>
         <p><b>Second SDLog:</b> <input class="form-control-file" type="file" name="SdLogTwo" required/></p>
+        <hr class="mt-2 mb-3"/>
         <div>
                 <label for="check_plot" class="">Overall plot: </label>
                 <input id="check_plot" class="" type="checkbox" name="check_plot"/>
         </div>
+        <hr class="mt-2 mb-3"/>
         <p>Granger linear: <input type="radio" name="check_granger" value="granger_linear" /></p>
         <p>Granger non-linear: <input type="radio" name="check_granger" value="granger_non_linear"/></p>
+        <hr class="mt-2 mb-3"/>
         <div>
             <p>Pearson correlation: <input type="radio" name="check_corr" value="pearson_corr" /></p>
             <p>Distance correlation: <input type="radio" name="check_corr" value="distance_corr"/></p>
         </div>
+        <hr class="mt-2 mb-3"/>
         <p><input type="submit" value="Explore SDLogs" class="btn btn-primary mb-2" id='submitmultSDl'/>
         </p>
 <!--        <label for="aspect1"><b>First aspect for {{ sdLog1_name }}</b></label>-->

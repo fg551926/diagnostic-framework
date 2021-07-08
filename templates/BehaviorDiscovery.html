@@ -18,13 +18,16 @@
         </div>
         <div class="">
             <p><b>Choose SD Log:</b> <input type="file" value="fileupload" name="SDLog" required/></p>
+            <hr class="mt-2 mb-3"/>
             <div>
                 <label for="check_season" class="">Seasonality check: </label>
                 <input id="check_season" class="" type="checkbox" name="check_season"/>
             </div>
         </div>
+        <hr class="mt-2 mb-3"/>
         <p>Granger linear: <input type="radio" name="check_granger" value="granger_linear" /></p>
         <p>Granger non-linear: <input type="radio" name="check_granger" value="granger_non_linear"/></p>
+        <hr class="mt-2 mb-3"/>
         <div>
             <p>Pearson correlation: <input type="radio" name="check_corr" value="pearson_corr" /></p>
             <p>Distance correlation: <input type="radio" name="check_corr" value="distance_corr"/></p>
@@ -37,7 +40,7 @@
 <!--                <label for="check_granger_nonlin" class="">Granger non-linear: </label>-->
 <!--                <input id="check_granger_nonlin" class="" type="checkbox" name="check_granger_nonlin"/>-->
 <!--            </div>-->
-
+        <hr class="mt-2 mb-3"/>
         <div>
             <label for="cp_pelt" class="">Changepoints (PELT search):</label>
             <input type="checkbox" id="cp_pelt" name="cp_pelt"/>
@@ -63,6 +66,7 @@
             <label for="sub_clustering" class="">Cluster sequences by changepoints:</label>
             <input type="checkbox" id="sub_clustering" name="sub_clustering"/>
         </div>
+        <hr class="mt-2 mb-3"/>
         <div>
             <label for="uni_forecasting" class="">Forecasting:</label>
             <input type="checkbox" id="uni_forecasting" name="uni_forecasting"/>
@@ -70,6 +74,7 @@
                                           step="1" placeholder="" name="forecast_n_period"
                                           id="forecast_n_period"/></p>
         </div>
+        <hr class="mt-2 mb-3"/>
         <div class="col-md-12">
             <button title="Show Behavior Discovery" name="submit start behavior" class="btn btn-primary mb-2"
                     id='showBdResult'>Start Behavior Discovery
