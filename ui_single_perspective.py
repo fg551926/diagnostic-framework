@@ -4,6 +4,8 @@ from forecasting import uni_forecast, multi_forecast
 from statsmodels.graphics.tsaplots import plot_acf, plot_pacf
 import matplotlib.pyplot as plt
 import os
+import numpy as np
+import dataframe_image as dfi # for saving dfs as png
 
 # thresholds to filter exogenous factors
 PEAR_THRESHOLD = 0.5
@@ -24,16 +26,22 @@ def init_res():
     res['clust_img'] = None
     res['clust_clusters'] = None
     res['uni_forecast_img'] = None
+    res['uni_errors'] = None
+    res['multi_forecast_img'] = None
+    res['multi_forecast_df_coef'] = None
     res['cp_type'] = None
     res['corr_type'] = None
     res['granger_type'] = None
     res['uni_model'] = None
     res['exog_factor'] = None
+    relations = None
 
     return res
 
 
 def calc_res(sd_log, aspect, checked_points):
+    relations = None
+
     # seasonality, cp_pelt, cp_ks, forecasting, sub_clustering, granger, aspect, ks_win=100, ks_stat=40):
     aspect_points = sd_log.get_points(aspect)
     res = init_res()
@@ -55,22 +63,29 @@ def calc_res(sd_log, aspect, checked_points):
         res['acf_img'] = os.path.join('static', 'images', 'acf_plot.png')
 
         # partial autocorellation function
-        plot_pacf(ar_points)
+        try:
+            plot_pacf(ar_points)
+        except:
+            plot_pacf(ar_points, lags=(len(ar_points) / 2) - 1)
         plt.savefig(os.path.join('static', 'images', 'pacf_plot.png'))
         res['pacf_img'] = os.path.join('static', 'images', 'pacf_plot.png')
         # get estimated period from sd_log
         res['period'] = sd_log.period
 
     if checked_points['granger'] == 'granger_linear':
-        granger_hm_path = os.path.join('static', 'images', 'hm_granger_img.png')
-        # create granger heatmap
-        df_granger, relations, exogenous_factors = relationdisc.grangers_causation_matrix(sd_log=sd_log, plot=True,
-                                                                                          save_hm=True,
-                                                                                          outputpath=granger_hm_path)
-        res['hm_granger_img'] = granger_hm_path
-        res['granger_causations'] = relations
-        res['granger_type'] = 'linear'
-        res['granger_exog'] = None
+        try:
+            granger_hm_path = os.path.join('static', 'images', 'hm_granger_img.png')
+            # create granger heatmap
+            df_granger, relations, exogenous_factors = relationdisc.grangers_causation_matrix(sd_log=sd_log, plot=True,
+                                                                                              save_hm=True,
+                                                                                              outputpath=granger_hm_path)
+            res['hm_granger_img'] = granger_hm_path
+            res['granger_causations'] = relations
+            res['granger_type'] = 'linear'
+            res['granger_exog'] = None
+        except:
+            # it might happen that the VAR fits the data perfectly
+            pass
     elif checked_points['granger'] == 'granger_non_linear':
         granger_hm_path = os.path.join('static', 'images', 'hm_granger_img.png')
         # create granger heatmap
@@ -137,17 +152,38 @@ def calc_res(sd_log, aspect, checked_points):
         forecast_val, model = uni_forecast(aspect_points, int(checked_points['forecast_n_period']), sd_log.period,
                                            save_plot=True, outputpath=uni_forecast_img_path)
         print(model)
+        error_rate = model.arima_res_.forecasts_error
+        #plt.plot(error_rate[0])
+        #plt.show()
+        res['uni_errors'] = [model.arima_res_.mae, model.arima_res_.mse] # first mae, second
         res['uni_model'] = str(model)
         res['uni_forecast_img'] = uni_forecast_img_path
 
         multi_forecast_img_path = os.path.join('static', 'images', 'mult_for_img.png')
+        multi_forecast_coef_path = os.path.join('static', 'images', 'df_coeff.png')
 
-        best_var = [key[1] for key, value in relations.items() if aspect == key[0]]
-        best_var.insert(0, aspect)
+        if not relations:
+            granger_hm_path = os.path.join('static', 'images', 'hm_granger_img.png')
+            df_granger, relations, exogenous_factors = relationdisc.grangers_causation_matrix(sd_log=sd_log, plot=True,
+                                                                                              save_hm=True,
+                                                                                              outputpath=granger_hm_path)
+            res['hm_granger_img'] = granger_hm_path
+            res['granger_causations'] = relations
+            res['granger_type'] = 'linear'
+            res['granger_exog'] = None
+
+
         try:
-            multi_forecast(sd_log=sd_log, variables=best_var, n_period=int(checked_points['forecast_n_period']),
-                           save_plot=True, outputpath=multi_forecast_img_path)
-        except:
+            best_var = [key[1] for key, value in relations.items() if aspect == key[0]]
+            best_var.insert(0, aspect)
+            df_fc, df_coef = multi_forecast(sd_log=sd_log, variables=best_var,
+                                            n_period=int(checked_points['forecast_n_period']),
+                                            save_plot=True, outputpath=multi_forecast_img_path)
             res['multi_forecast_img'] = multi_forecast_img_path
+            # save coef as png
+            dfi.export(df_coef, multi_forecast_coef_path)
+            res['multi_forecast_df_coef'] = multi_forecast_coef_path
+        except:
+            res['multi_forecast_img'] = 'Error'
 
     return res

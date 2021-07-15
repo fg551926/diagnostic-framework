@@ -244,6 +244,7 @@ def get_multiple_perspective_result():
         checked_granger = request.form.get("check_granger")
         checked_corr = request.form.get("check_corr")
         checked_plot = request.form.get("check_plot")
+        with_cp = request.form.get("check_plot_cp")
         res['corr_type'] = checked_corr
         res['granger_type'] = checked_granger
         res['checked_plot'] = checked_plot
@@ -255,8 +256,13 @@ def get_multiple_perspective_result():
         path_all_cp1 = os.path.join('static', 'images', 'all_cp_1.png')
         path_all_cp2 = os.path.join('static', 'images', 'all_cp_2.png')
         if checked_plot == 'on':
-            sdl1.plot_all_with_cp(outputpath=path_all_cp1)
-            sdl2.plot_all_with_cp(outputpath=path_all_cp2)
+            if with_cp == 'on':
+                sdl1.plot_all_with_cp(outputpath=path_all_cp1)
+                sdl2.plot_all_with_cp(outputpath=path_all_cp2)
+            else:
+                sdl1.plot_all(outputpath=path_all_cp1)
+                sdl2.plot_all(outputpath=path_all_cp2)
+
 
         path_granger = os.path.join('static', 'images', 'granger_2sdlogs.png')
         if checked_granger == 'granger_linear':

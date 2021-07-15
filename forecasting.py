@@ -56,13 +56,16 @@ def auto_arima(series, freq):
     # else:
     #     freq = 1
     if not freq:
+        seasonality = False
         freq = 1
+    else:
+        seasonality = True
     model = pm.auto_arima(series, start_p=1, start_q=1,
                           test='adf',  # use adftest to find optimal 'd'
                           max_p=3, max_q=3,  # maximum p and q
                           m=freq,  # frequency of series
                           d=None,  # let model determine 'd'
-                          seasonal=True,  # Seasonality
+                          seasonal=seasonality,  # Seasonality
                           start_P=0,
                           D=None,  # let model determine 'D'
                           trace=True,
@@ -107,6 +110,8 @@ def uni_forecast(series, n_periods, freq, save_plot=False, outputpath=None):
     if save_plot:
         plt.savefig(outputpath)
     plt.show()
+
+    #print(model.summary())
     return fc_series, model
 
 
@@ -144,7 +149,7 @@ def multi_forecast(sd_log, variables, n_period, save_plot=False, outputpath=None
     model = VAR(data)
     # Look for minimum AIC/BIC and corresponding lag to fit model
     lag = min(model.select_order(maxlags=max_lag).selected_orders.values())
-    lag = 1
+    #lag = 1
 
     results = model.fit(lag)
     print(results.summary())
@@ -155,10 +160,12 @@ def multi_forecast(sd_log, variables, n_period, save_plot=False, outputpath=None
     df_fc = pd.DataFrame(fc, index=data.index[-n_period:])
     # inverting resulting forecast
     # inv_diff(sd_log.data[sd_log.finish_rate], data[sd_log.finish_rate], ndiff)
+    # get equation
+    df_coef = results.params
     if save_plot:
         plt.savefig(outputpath)
     plt.show()
-    return df_fc
+    return df_fc, df_coef
 
 
 def var_diagnostic(model_fitted):

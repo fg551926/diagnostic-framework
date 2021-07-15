@@ -144,12 +144,12 @@ class Sdl:
         return np.array(self.data[col])
 
     # plots all aspect
-    def plot_all(self, title='All aspects plotted:', save=False):
+    def plot_all(self, title='All aspects plotted:', outputpath=None):
         self.data.plot(subplots=True, xlabel="index",
                        figsize=(5, 10), grid=True)
+        if outputpath:
+            plt.savefig(outputpath, bbox_inches='tight')
         plt.show()
-        if save:
-            plt.savefig('pictures/' + title)
 
     def plot_all_with_cp(self, outputpath=None):
         ax = self.data.plot(subplots=True, xlabel="time steps", title='Plot for all single aspects along with changepoints',

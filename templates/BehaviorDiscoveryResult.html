@@ -160,8 +160,9 @@
                     <div class="card-header pt-2" style="font-weight: bold"> Infobox </i>
                     </div>
                     <div class="card-body">
-                        <p>Best model:</p>
-                        <p>{{ res['uni_model'] }}</p>
+                        <p>Best model: {{ res['uni_model'] }}</p>
+                        <p>MAE: {{res['uni_errors'][0]}} </p>
+                        <p>MSE: {{res['uni_errors'][1]}} </p>
                     </div>
                 </div>
             </div>
@@ -176,15 +177,9 @@
                                            src="{{ res['multi_forecast_img'] }}" width="1500">
                 <p class="mt-2 mb-0 text-center">Forecasting results</p>
             </div>
-            <div class="col-md-6" style="">
-                <div class="card border border-dark">
-                    <div class="card-header pt-2" style="font-weight: bold"> Infobox </i>
-                    </div>
-                    <div class="card-body">
-                        <p></p>
-                        <p></p>
-                    </div>
-                </div>
+           <div class="col-md-6 p-3"><img class="img-fluid d-block"
+                                           src="{{ res['multi_forecast_df_coef'] }}" width="1500">
+                <p class="mt-2 mb-0 text-center">Coefficients in corresponding lags</p>
             </div>
         </div>
         {% endif %}
