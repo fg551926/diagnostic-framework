@@ -130,6 +130,11 @@ def calc_res(sd_log, aspect, checked_points):
         res['cp_img'] = cp_img_path
         res['cp_val'] = cp_values
         res['cp_type'] = 'Pelt'
+    elif checked_points['cp_bs'] == 'on':
+        cp_values = behaviordisc.cp_detection_binary_segmentation(aspect_points, save_plot=True, outputpath=cp_img_path)
+        res['cp_img'] = cp_img_path
+        res['cp_val'] = cp_values
+        res['cp_type'] = 'Binary Segmentation'
     elif checked_points['ks_test'] == 'on':
         cp_values = behaviordisc.cp_detection_KSWIN(aspect_points, window_size=checked_points['w_size'],
                                                     stat_size=checked_points['stat_size'],
@@ -139,12 +144,13 @@ def calc_res(sd_log, aspect, checked_points):
         res['cp_type'] = 'Kolmogorov-Smirnov'
 
     # create subsequence plot
-    if checked_points['sub_seq'] == 'on' and checked_points['cp_pelt']:
+    if checked_points['sub_seq'] == 'on' and (checked_points['cp_pelt'] or checked_points['cp_bs']):
         clust_img_path = os.path.join('static', 'images', 'clust_img.png')
         clusters = behaviordisc.subseqeuence_clustering(aspect_points, cp_values, save_plot=True,
                                                         outputpath=clust_img_path, y_label=aspect)
         res['clust_img'] = clust_img_path  # path to cp img
         res['clust_clusters'] = clusters
+
 
     # forecasting (uni+multi)
     if checked_points['forecasting'] == 'on':

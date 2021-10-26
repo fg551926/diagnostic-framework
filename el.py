@@ -22,7 +22,28 @@ from pm4py.objects.conversion.process_tree import converter
 from pm4py.algo.organizational_mining.sna import algorithm as sna
 
 
-def calc_boxplot_val(data): # expects list as input with valuesin seconds, return values as datetime
+
+def calc_resource_duration(log_csv):
+    # add duration for each row
+    log_csv['duration'] = abs(log_csv['Complete Timestamp'] - log_csv['Start Timestamp'])
+    # convert into seconds
+    log_csv['duration'] = log_csv['duration'].astype('timedelta64[s]')
+    # calculate mean, median, count for each Resource
+    res_dur_grouped = log_csv.groupby('Resource').duration.agg(['median', 'mean'])
+    # convert back to timedelta
+    res_dur_grouped['median'] = pd.to_timedelta(res_dur_grouped['median'], unit='s')
+    res_dur_grouped['mean'] = pd.to_timedelta(res_dur_grouped['mean'], unit='s')
+    # add count column
+    res_dur_grouped['count'] = log_csv.groupby(['Resource']).Resource.agg('count').to_frame('count')['count']
+    tmp = res_dur_grouped['count'].sum()
+    res_dur_grouped['total duration'] = res_dur_grouped['mean'] * res_dur_grouped['count']
+    # calculate boxplot values
+    list_total_dur_all = res_dur_grouped['total duration'].astype('timedelta64[s]').tolist()
+    bp_res = calc_boxplot_val(list_total_dur_all)
+    return res_dur_grouped.T.to_dict('dict'), bp_res
+
+
+def calc_boxplot_val(data): # expects list as input with values in seconds, return values as datetime
     dataset = np.array(data)
     info_bp = dict()
     mean = np.round(np.mean(dataset), 2)
@@ -139,7 +160,7 @@ class El:
     def __init__(self, filepath):
         self.path = filepath
         self.log, self.log_csv = load_data(filepath)
-        self.__first_timestamp = pd.to_datetime(min(event['start_timestamp'] for trace in self.log for event in trace).timestamp())
+        self.__first_timestamp = min(self.log_csv['Start Timestamp'])
         self.lifecycle = check_for_lifecycle(self.log)
         self.petri_net = None  # can be extended later
 
@@ -150,9 +171,7 @@ class El:
         self.dfg = dfg_discovery.apply(self.log,
                                        parameters={dfg_discovery.Parameters.START_TIMESTAMP_KEY: "start_timestamp",
                                                    dfg_discovery.Parameters.TIMESTAMP_KEY: "time:timestamp"})
-        self.dfg_perf = dfg_discovery.apply(self.log, variant=dfg_discovery.Variants.PERFORMANCE,
-                                            parameters={dfg_discovery.Parameters.START_TIMESTAMP_KEY: "start_timestamp",
-                                                        dfg_discovery.Parameters.TIMESTAMP_KEY: "time:timestamp"})
+        self.dfg_perf = dfg_discovery.apply(self.log, variant=dfg_discovery.Variants.PERFORMANCE)
 
         # self.bpmn_graph = create_BPMN(self.log)
         # self.hw_values = sna.apply(self.log, variant=sna.Variants.HANDOVER_LOG)  # handover of work
@@ -161,6 +180,8 @@ class El:
         # self.wt_values = sna.apply(self.log, variant=sna.Variants.WORKING_TOGETHER_LOG)  # working together
 
         self.roles = roles_discovery.apply(self.log)
+        self.res_durations, self.boxplot_res = calc_resource_duration(self.log_csv)
+        #self.org_duratiions = calc_organizations_durations(self.roles)
 
         self.act_recommendation = None
         self.trans_recommendation = None
@@ -199,7 +220,7 @@ class El:
             recom_entry = dict()
             recom_entry['type'] = 'bottleneck'
             recom_entry['mean_duration'] = datetime.timedelta(seconds=self.soj_time[act])
-            recom_entry['total_duration'] = datetime.timedelta(seconds=(self.soj_time[act] * activities_count[act]))
+            recom_entry['total_duration'] = datetime.timedelta(seconds=(self.soj_time[act] * (activities_count[act])))
             tmp_bp.append(self.soj_time[act] * activities_count[act])
             recom_entry['Resource Role'] = [list(role[1].keys()) for role in self.roles if act in role[0]]
             act_recommendation[act] = recom_entry
@@ -222,7 +243,16 @@ class El:
         res_recommendation = dict()
         recom_entry = dict()
         recom_entry['type'] = 'social network'
-        recom_entry['role'] = self.roles
+        roles_final = self.roles
+        for role in roles_final:
+            mean_duration_role = self.log_csv.loc[self.log_csv['Activity'].isin(role[0])].duration.mean()
+            freq_role = sum(role[1].values())
+            total_duration_role = mean_duration_role * freq_role
+            # append mean duration of organziation
+            role.append(datetime.timedelta(seconds=mean_duration_role))
+            # append total duration (mean * freq of all activities) of organziation
+            role.append(datetime.timedelta(seconds=total_duration_role))
+        recom_entry['role'] = roles_final
         # recom_entry['similar activities'] = None
         # recom_entry['working together'] = None
         # recom_entry['similar activities'] = None

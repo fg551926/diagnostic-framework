@@ -1,5 +1,13 @@
 {% extends "base.html" %}
 
+{% block head %}
+
+<script>
+    var aspdata = JSON.parse('{{ raw_data|tojson }}');
+    var timeddata = JSON.parse('{{ timed_data|tojson }}');
+</script>
+{% endblock %}
+
 {% block title %} Single Perspective Analysis <br> <i> Discover single process and state-based
     aspects</i> {% endblock %}
 
@@ -28,8 +36,37 @@
                             <button title="Select aspect" name="submit aspect" class="btn btn-primary mb-2"
                                     id="select_aspect">Select aspect
                             </button>
+
+                            <button type="button" class="btn btn-primary" data-toggle="modal" data-target="#plot" data-whatever="@mdo" onclick="showPlot('{{ selected_aspect }}')">Show Timed Plot</button>
                         </div>
                     </form>
+                    <!--   PLOT HTML Modal  -->
+
+                <div class="modal fade" id="plot" tabindex="-1" role="dialog" aria-labelledby="plotLabel" aria-hidden="true">
+                  <div class="modal-dialog" role="document">
+                    <div class="modal-content" style="width: 600px">
+                      <div class="modal-header">
+                        <h5 class="modal-title" id="plotLabel">Interactive Plot for {{ selected_aspect }}</h5>
+                        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                          <span aria-hidden="true">&times;</span>
+                        </button>
+                      </div>
+                      <div class="modal-body">
+                        <div class="container">
+                          <div class="row">
+                            <div class="col-sm-12">
+                              <div id="chartContainerPlot" style="height: 370px; width: 100%;"></div>
+                            </div>
+                            <div id="descriptionPlot"></div>
+                          </div>
+                        </div>
+                      </div>
+                      <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
                 </div>
             </div>
         </div>
@@ -88,20 +125,47 @@
                 <caption>G-caused relations for p-values above 0.05</caption>
                 <thead>
                 <tr>
-                    <!--                        <th scope="col">#</th>-->
                     <th scope="col">Aspect</th>
                     <th scope="col">is G-caused by</th>
                     <th scope="col">after #lags <i>(in time steps)</i></th>
                 </tr>
                 </thead>
                 <tbody>
-                {% for key, value in res['granger_causations'].items() if selected_aspect in key %}
+                {% for key1, value in res['granger_causations'].items() if selected_aspect in key1 %}
                 <tr>
-                    <th scope="row">{{ key[0] }}</th>
-                    <!--                        <td>{{ key[0] }} </td>-->
-                    <td> {{ key[1]}}</td>
+                    <td scope="row">{{ key1[0] }}</td>
+                    <td> {{ key1[1]}}</td>
                     <td> {{value}}</td>
+                    <td><button type="button" class="btn btn-primary" data-toggle="modal" data-target="#graph" data-whatever="@mdo" onclick="calcScatter('{{ key1[0] }}', '{{ key1[1] }}')">Show Scatter Plot</button></td>
                 </tr>
+
+                <!--   GRAPH HTML MODAL -->
+
+                <div class="modal fade" id="graph" tabindex="-1" role="dialog" aria-labelledby="graphLabel" aria-hidden="true">
+                  <div class="modal-dialog" role="document">
+                    <div class="modal-content" style="width: 600px">
+                      <div class="modal-header">
+                        <h5 class="modal-title" id="graphLabel">Scatter Plot Process Aspects</h5>
+                        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                          <span aria-hidden="true">&times;</span>
+                        </button>
+                      </div>
+                      <div class="modal-body">
+                        <div class="container">
+                          <div class="row">
+                            <div class="col-sm-12">
+                              <div id="chartContainer" style="height: 370px; width: 100%;"></div>
+                            </div>
+                            <div id="description"></div>
+                          </div>
+                        </div>
+                      </div>
+                      <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
                 {% endfor %}
                 </tbody>
             </table>
@@ -185,5 +249,110 @@
         {% endif %}
     </div>
 </div>
+
+<script type="text/javascript">
+// Scatter plot
+var chart;
+// interactive plot with days
+var chartPlot;
+window.onload = function () {
+    // Scatter plot
+    chart = new CanvasJS.Chart("chartContainer", {
+        animationEnabled: true,
+        zoomEnabled: true,
+        theme: "light2",
+        title: {
+            // text: "Scatter Plot Process Aspects"
+        },
+        axisX: {
+            title: "X - Axis",
+            gridThickness: 1,
+            titleFontSize: 15,
+        },
+        axisY: {
+            title: "Y -Axis",
+            titleFontSize: 15,
+        },
+        data: [{
+            type: "scatter",
+            color: "blue",
+            dataPoints: [
+                {x: 0, y: 0},
+            ]
+        }]
+    });
+
+    chart.render();
+    // interactive plot
+    chartPlot = new CanvasJS.Chart("chartContainerPlot", {
+	animationEnabled: true,
+    zoomEnabled: true,
+    theme: "light2",
+	title: {
+		// text: "Hourly Average CPU Utilization"
+	},
+	axisX: {
+		title: "Time",
+        titleFontSize: 15,
+	},
+	axisY: {
+		title: "{{ selected_aspect }}",
+		includeZero: true,
+        titleFontSize: 15,
+	},
+	data: [{
+		type: "line",
+		name: "",
+		connectNullData: true,
+		//nullDataLineDashType: "solid",
+		xValueType: "dateTime",
+		xValueFormatString: "DDD MMM YYYY HH:mm TT",
+		dataPoints: timeddata['{{selected_aspect}}'],
+	}]
+});
+chartPlot.render();
+}
+
+
+
+function calcScatter(asp1, asp2) {
+
+
+    $('#graph').on('show.bs.modal', function (event, val) {
+     var button = $(event.relatedTarget) // Button that triggered the modal
+        chart.render();
+        chart.axisX[0].set("title",asp1);
+        chart.axisY[0].set("title",asp2);
+        var x_data = aspdata[asp1];
+        var y_data = aspdata[asp2];
+        var result = []
+        for (var i=0; i < x_data.length;i++) {
+            result.push({'x': x_data[i], 'y': y_data[i]});
+        }
+
+        chart.options.data[0].dataPoints = result
+        chart.render();
+        console.log("aspdata", aspdata);
+        console.log("asp1", asp1);
+        console.log("x_data", x_data);
+        console.log("result", result);
+
+    })
+}
+
+function showPlot(selected_asp) {
+    $('#plot').on('show.bs.modal', function (event, val) {
+     var button = $(event.relatedTarget) // Button that triggered the modal
+        chartPlot.render();
+        chartPlot.axisY[0].set("title",selected_asp);
+        chartPlot.options.data[0].dataPoints = timeddata[selected_asp];
+
+        chartPlot.render();
+        console.log("aspekt", selected_asp);
+        console.log("timeddata", timeddata);
+
+    })
+}
+</script>
 
 {% endblock %}

@@ -7,3 +7,20 @@
 # Editor-based HTTP Client requests
 /httpRequests/
 .idea
+/flask_session/
+/logs/
+/Outputs/examinecasually_sdlog.csv
+/Outputs/rejectrequest_sdlog.csv
+/Outputs/examinethoroughly_sdlog.csv
+/Outputs/paycompensation_sdlog.csv
+/Outputs/InsuranceCheckPrivate_sdlog.csv
+/Outputs/BPI2017General_1D_sdlog.csv
+/Outputs/decide_sdlog.csv
+/Outputs/SendInvoice_sdlog.csv
+/Outputs/General_sdlog_1D.csv
+/Outputs/reinitiaterequest_sdlog.csv
+/Outputs/checkticket_sdlog.csv
+/Outputs/BPI2017General_7D_sdlog.csv
+/Outputs/vac_General_1D_sdlog.csv
+/Outputs/registerrequest_sdlog.csv
+/Outputs/act_vacc_1D/

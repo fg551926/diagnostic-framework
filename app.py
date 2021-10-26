@@ -1,6 +1,7 @@
 import os
 import pm4py
 import datetime
+import re
 from collections import defaultdict
 from flask import Flask, render_template, request, session, flash, url_for, redirect, send_file
 from flask_sqlalchemy import SQLAlchemy
@@ -173,6 +174,7 @@ def get_behavior_discovery_result():
             checked_points = dict()
             checked_points['check_season'] = request.form.get("check_season")
             checked_points['cp_pelt'] = request.form.get("cp_pelt")
+            checked_points['cp_bs'] = request.form.get("cp_bs")
             checked_points['ks_test'] = request.form.get("cp_ks")
             checked_points['granger'] = request.form.get("check_granger")
             checked_points['corr'] = request.form.get("check_corr")
@@ -189,7 +191,14 @@ def get_behavior_discovery_result():
             sdl = session['sdl_obj']
         else:
             sd_log_filename = session['sd_log_filename']
-            sdl = Sdl(os.path.join('Outputs', sd_log_filename))
+            if 'el' in session:
+                el = session['el']
+                sdl = Sdl(path=os.path.join('Outputs', sd_log_filename), start_tp=el.get_earliest_timestamp())
+            elif re.match('(\d{4})[/.-](\d{2})[/.-](\d{2}).*', request.form.get("datepicker")):
+                date = pd.to_datetime(request.form.get('datepicker'))
+                sdl = Sdl(path=os.path.join('Outputs', sd_log_filename), start_tp=date)
+            else:
+                sdl = Sdl(path=os.path.join('Outputs', sd_log_filename))
             session['sdl_obj'] = sdl
         params_list = sdl.columns
         if not selected_aspect:
@@ -198,7 +207,7 @@ def get_behavior_discovery_result():
         res = ui_single_perspective.calc_res(sd_log=sdl, aspect=selected_aspect, checked_points=checked_points)
 
     return render_template('BehaviorDiscoveryResult.html', selected_aspect=selected_aspect, params_list=params_list,
-                           res=res)
+                           res=res, raw_data=sdl.data.to_dict('list'), timed_data=sdl.timed_data)
 
 
 @app.route('/MultipleDiscovery.html', methods=['POST', 'GET'])
@@ -316,13 +325,16 @@ def process_discovery():
     info = []
     info_bp_act = el.boxplot_act
     info_bp_trans = el.boxplot_trans
+    info_bp_res = el.boxplot_res
     start_tp = el.get_earliest_timestamp()
     lifecycle = el.lifecycle
     act_recomm = el.act_recommendation
     trans_recomm = el.trans_recommendation
+    res_dur = el.res_durations
     roles = el.res_recommendation
     dfg_img_path = os.path.join('static', 'images', 'dfg.png')
-    gviz = pm4py.visualization.dfg.visualizer.apply(el.dfg, log=el.log)
+    gviz = pm4py.visualization.dfg.visualizer.apply(el.dfg_perf, log=el.log, soj_time=el.soj_time,
+                                                    variant=pm4py.visualization.dfg.visualizer.Variants.PERFORMANCE)
     pm4py.visualization.dfg.visualizer.save(gviz, dfg_img_path)
     # bpmn_img_path = os.path.join('static', 'images', 'bpmn.png')
     # pm4py.save_vis_bpmn(el.bpmn_graph, bpmn_img_path)
@@ -334,7 +346,8 @@ def process_discovery():
     info.append(lifecycle)
     return render_template('ProcessDiscovery.html', img_path=dfg_img_path, act_recomm=act_recomm,
                            trans_recomm=trans_recomm, roles=roles, start_tp=start_tp, info=info, table=table,
-                           threshold=threshold, info_bp_a=info_bp_act, info_bp_t=info_bp_trans)
+                           threshold=threshold, info_bp_a=info_bp_act, info_bp_t=info_bp_trans, info_bp_r=info_bp_res,
+                           res_dur=res_dur)
 
 
 # @app.route('/mygraph.html')
@@ -412,6 +425,7 @@ def result():
                 """
             elif request.form["AcReList"] != '':
                 acreslist = request.form["AcReList"].split(",")
+                acreslist = [(i.replace("_", "")).replace(" ", "") for i in acreslist]
                 res_list = event_log[0]['Resource'].unique().tolist()
                 act_list = event_log[0]['Activity'].unique().tolist()
                 if acreslist[0] in res_list:

@@ -10,17 +10,25 @@ import pandas as pd
 import numpy as np
 from statsmodels.tsa.seasonal import STL
 from scipy.signal import argrelmin, argrelmax
+from tslearn.clustering import TimeSeriesKMeans, silhouette_score
+from tslearn.utils import to_time_series_dataset
+from tslearn.preprocessing import TimeSeriesScalerMinMax
 
 
-def cp_detection_binary_segmentation(points):
+def cp_detection_binary_segmentation(points,  show_plot=False, save_plot=False, outputpath=None, pen=3):
     # Changepoint detection with the Binary Segmentation search method
-    model = "l2"
+    model = "rbf"
+    n = len(points)
     algo = rpt.Binseg(model=model).fit(points)
-    my_bkps = algo.predict(n_bkps=2)
+    # my_bkps = algo.predict(n_bkps=2) # if number of change poins is known a priori
+    my_bkps = algo.predict(pen=pen)
     # show results
-    rpt.show.display(points, my_bkps, figsize=(10, 6))
-    plt.title('Change Point Detection: Binary Segmentation Search Method')
-    plt.show()
+    if show_plot or save_plot:
+        fig, (ax,) = rpt.display(points, my_bkps, figsize=(10, 6))
+        if show_plot:
+            plt.show()
+        elif save_plot:
+            plt.savefig(outputpath, dpi=300)
     return my_bkps
 
 
@@ -72,7 +80,7 @@ def cp_detection_ADWIN(points):
 def cp_detection_PELT(points, show_plot=False, save_plot=False, outputpath=None, pen=3):
     # change point detection using pelt search method
     model = 'rbf'  # "l1" "l2", "rbf"
-    algo = rpt.Pelt(model=model, min_size=1, jump=1).fit(points)
+    algo = rpt.Pelt(model=model, min_size=3, jump=5).fit(points)
     my_bkps = algo.predict(pen=pen)
 
     # show results
@@ -81,7 +89,7 @@ def cp_detection_PELT(points, show_plot=False, save_plot=False, outputpath=None,
         if show_plot:
             plt.show()
         elif save_plot:
-            plt.savefig(outputpath)
+            plt.savefig(outputpath, dpi=300)
 
     return my_bkps
 
@@ -156,9 +164,6 @@ def subseqeuence_clustering(sequence, changepoints, y_label='y', show_plot=False
     :param changepoints: detected changepoints on which subseuqences are build
     :return:
     """
-    from tslearn.clustering import TimeSeriesKMeans, silhouette_score
-    from tslearn.utils import to_time_series_dataset
-    from tslearn.preprocessing import TimeSeriesScalerMinMax
 
     sub_ids = []
     x_index = []
@@ -231,7 +236,7 @@ def subseqeuence_clustering(sequence, changepoints, y_label='y', show_plot=False
     if show_plot:
         plt.show()
     if save_plot:
-        plt.savefig(outputpath)
+        plt.savefig(outputpath, dpi=300)
 
 
     return cluster_metrics_dict

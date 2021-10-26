@@ -2,23 +2,29 @@
 <html lang="en">
 
 <head>
-    <meta Http-Equiv="Cache-Control" Content="no-cache">
-    <meta Http-Equiv="Pragma" Content="no-cache">
-    <meta Http-Equiv="Expires" Content="0">
-    <meta Http-Equiv="Pragma-directive: no-cache">
-    <meta Http-Equiv="Cache-directive: no-cache">
+<!--    <meta Http-Equiv="Cache-Control" Content="no-cache">-->
+<!--    <meta Http-Equiv="Pragma" Content="no-cache">-->
+<!--    <meta Http-Equiv="Expires" Content="0">-->
+<!--    <meta Http-Equiv="Pragma-directive: no-cache">-->
+<!--    <meta Http-Equiv="Cache-directive: no-cache">-->
     <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+<!--    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">-->
     <meta name="description" content="">
     <meta name="author" content="">
+
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta http-equiv="X-UA-Compatible" content="ie=edge" />
 
     <title>Scenario-based Analysis of Processes</title>
 
     <!-- Bootstrap core CSS -->
-    <link href="static/css/vendor/bootstrap/css/bootstrap.min.css" rel="stylesheet">
+    <link href="../static/css/vendor/bootstrap/css/bootstrap.min.css" rel="stylesheet">
 
     <!-- Custom styles for this template -->
-    <link href="static/css/simple-sidebar.css" rel="stylesheet">
+    <link href="../static/css/simple-sidebar.css" rel="stylesheet">
+
+    <!-- zoom css -->
+    <link href="../static/css/image-zoom.css" rel="stylesheet">
 
 </head>
 
@@ -35,8 +41,8 @@
             <a href="InsideEventLog.html" class="list-group-item list-group-item-action bg-light">Upload Event Log</a>
             <a href="ProcessDiscovery.html" class="list-group-item list-group-item-action bg-light">Insights</a>
             <a href="EventLog.html" class="list-group-item list-group-item-action bg-light">Event Log to SD Log</a>
-            <a href="BehaviorDiscovery.html" class="list-group-item list-group-item-action bg-light">Single Perspective Analysis</a>
-            <a href="MultipleDiscovery.html" class="list-group-item list-group-item-action bg-light">Multiple Perspective Analysis</a>
+            <a href="BehaviorDiscovery.html" class="list-group-item list-group-item-action bg-light">Single SD Log Analysis</a>
+            <a href="MultipleDiscovery.html" class="list-group-item list-group-item-action bg-light">Multiple SD Logs Analysis</a>
 <!--            <a href="SDLog.html" class="list-group-item list-group-item-action bg-light">Relation Detection</a>-->
 <!--            <a href="SDLogResutl.html" class="list-group-item list-group-item-action bg-light">Relation Detection-->
 <!--                Detailed</a>-->
@@ -79,7 +85,16 @@
                         <div class="col-lg-8 col-md-8">
                             <div>
                                 <!--BPMN model-->
-                                <img src="{{  img_path  }}" width="550" height="auto" alt="BPMN Model">
+<!--                                <img src="{{  img_path  }}" width="550" height="auto" alt="BPMN Model">-->
+<!--                                <img src='../static/images/dfg.png' class="zoom" alt='Graphics' width='450' height='450'/>-->
+
+                                <div class="zoom-wrapper">
+                                    <div class="zoom_outer">
+                                        <div>
+                                            <img src="../static/images/dfg.png" id="zoom" alt="zoom">
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
                             <div style="margin-top: 100px">
                                 <div class="container">
@@ -92,6 +107,7 @@
                                                     <select class="form-select" id="table" name="table">
                                                         <option> Activities</option>
                                                         <option>Transitions</option>
+                                                        <option>Resources</option>
                                                         <option>Roles</option>
                                                     </select>
                                                 </div>
@@ -173,6 +189,8 @@
                                         <tr>
                                             <th scope="col">Roles activities</th>
                                             <th scope="col">Roles resources</th>
+                                            <th scope="col">Mean duration</th>
+                                            <th scope="col">Total duration</th>
                                         </tr>
                                         </thead>
                                         <tbody>
@@ -180,13 +198,38 @@
                                         <tr>
                                             <th scope="row">{{ role[0] }}</th>
                                             <td>{{ role[1] }}</td>
-                                            <td></td>
+                                            <td>{{ role[2] }}</td>
+                                            <td>{{ role[3] }}</td>
                                         </tr>
                                         {% endfor %}
                                         </tbody>
                                     </table>
                                     {% endif %}
                                     <!--end Table for roles-->
+
+                                    <!--Table for resource durations-->
+                                    {% if table == 'Resources' %}
+                                    <table class="table table-striped">
+                                        <caption>Bottleneck in resources</caption>
+                                        <thead>
+                                        <tr>
+                                            <th scope="col">Resource</th>
+                                            <th scope="col">Mean Duration</th>
+                                            <th scope="col">Total Duration</th>
+                                        </tr>
+                                        </thead>
+                                        <tbody>
+                                        {% for res, values in res_dur.items() %}
+                                        <tr>
+                                            <th scope="row">{{ res }}</th>
+                                            <td>{{ values['mean'] }}</td>
+                                            <td>{{ values['total duration'] }}</td>
+                                        </tr>
+                                        {% endfor %}
+                                        </tbody>
+                                    </table>
+                                    {% endif %}
+                                    <!--end Table for resource durations-->
 
                                 </div>
                             </div>
@@ -248,6 +291,26 @@
                                     </div>
                                 </div>
                             </div>
+                            <div class="card mb-4" style="border: 1px solid">
+                                <div class="card-header" style="font-weight: bold">Potential bottlenecks:
+                                    <div style="font-style: italic">resources</div>
+                                </div>
+                                <div class="card-body">
+                                    <div> Mean: {{ info_bp_r['mean'] }} </br>
+                                        Median of events: {{ info_bp_r['median'] }} </br>
+                                        Q1: {{ info_bp_r['Q1'] }} </br>
+                                        Q3: {{ info_bp_r['Q3'] }} </br>
+                                        Upper whisker: {{ info_bp_r['up_whisker'] }} </br>
+                                        Max: {{ info_bp_r['max_value'] }} </br>
+                                        <br>
+                                        Consider following resources: <br>
+                                        {% for res, values in res_dur.items() if values['total duration'] > info_bp_r['up_whisker']%}
+                                        {{ res }} <br>
+                                        {% endfor %}
+
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -262,8 +325,11 @@
 <!-- /#wrapper -->
 
 <!-- Bootstrap core JavaScript -->
-<script src="vendor/jquery/jquery.min.js"></script>
-<script src="vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
+<script src="../static/css/vendor/jquery/jquery.min.js"></script>
+<script src="../static/css/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
+<script src="../static/css/vendor/wheelzoom/wheelzoom.js"></script>
+<script src="../static/css/vendor/zoom/zoom.js"></script>
+
 
 <!-- Menu Toggle Script -->
 <script>
@@ -274,6 +340,11 @@
     function LoadELResultimg() {
         document.getElementById('ELResultimg').style.display = "block";
     }
+
+
+    wheelzoom(document.querySelector('img.zoom'));
+
+    // console.log("wheelzoom"), wheelzoom(document.querySelector('img.zoom'));
 </script>
 
 </body>

@@ -1,0 +1,18 @@
+.zoom-wrapper {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  height: 600px;
+  overflow: hidden;
+}
+
+#zoom {
+  width: 320px;
+  height: 100%;
+  position: relative;
+  cursor: grab;
+}
+div#zoom > img {
+  width: 70%;
+  height: 70%;
+}

@@ -18,6 +18,11 @@
         </div>
         <div class="">
             <p><b>Choose SD Log:</b> <input type="file" value="fileupload" name="SDLog" required/></p>
+
+                            <input type="text" class="form-control" id="datepicker" aria-describedby="datepicker"
+                                   placeholder="YYYY-MM-DD hh:mm" name="datepicker">
+                            <small id="emailHelp" class="form-text text-muted">If you have not upload an event log in this session,
+                                please provide the first timestamp of the SD Log.</small>
             <hr class="mt-2 mb-3"/>
             <div>
                 <label for="check_season" class="">Seasonality check: </label>
@@ -44,6 +49,10 @@
         <div>
             <label for="cp_pelt" class="">Changepoints (PELT search):</label>
             <input type="checkbox" id="cp_pelt" name="cp_pelt"/>
+        </div>
+        <div>
+            <label for="cp_bs" class="">Changepoints (Binary Segmentation):</label>
+            <input type="checkbox" id="cp_bs" name="cp_bs"/>
         </div>
         <div>
 

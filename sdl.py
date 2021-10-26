@@ -13,6 +13,21 @@ EXPECTED_PERIODS = {'1H': [24, 168, 672],  # expected periods for seasonal patte
                     '7D': [4, 48]}
 
 
+def make_timed_data(data, start_tp, time_window):
+    timed_data = {}
+    x_axis = pd.date_range(start=start_tp, periods=len(data), freq=time_window)
+    x_converted = [x.timestamp()*1000 for x in x_axis]
+    #x_converted = x_axis.astype(np.int64) // 10**9
+    data_dict = data.to_dict('list')
+    for key, value in data_dict.items():
+        tmp = []
+        for x_val, y_val in zip(x_converted, value):
+            tmp.append({'x': x_val, 'y': y_val})
+        #timed_data[key] = str(tmp).replace('\'', '')
+        timed_data[key] = tmp
+    return timed_data
+
+
 # Test for multivariate ts
 def stationary_test(data):  # df input
     """
@@ -63,13 +78,15 @@ def get_period(tw, n_weeks):
 
 class Sdl:
 
-    def __init__(self, path):
+    def __init__(self, path, start_tp=0):
         self.data = pd.read_csv(path)
         self.raw_data = pd.read_csv(path)
+        self.start_tp = start_tp
 
         self.series = self.data.to_numpy()
         self.columns = self.data.columns
         self.tw = re.findall(r'\d+[A-Z]', self.columns[0])[0]  # time window of sd_log
+        self.timed_data = make_timed_data(self.data, start_tp=start_tp, time_window=self.tw)
         self.aspect = self.columns[0].split('_')[0] # column name indicates which aspect
         #  variables as string
         self.arrival_rate = None

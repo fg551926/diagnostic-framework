@@ -15,11 +15,16 @@
     <title>Scenario-based Analysis of Processes</title>
 
     <!-- Bootstrap core CSS -->
-    <link href="static/css/vendor/bootstrap/css/bootstrap.min.css" rel="stylesheet">
+    <link href="../static/css/vendor/bootstrap/css/bootstrap.min.css" rel="stylesheet">
 
     <!-- Custom styles for this template -->
-    <link href="static/css/simple-sidebar.css" rel="stylesheet">
+    <link href="../static/css/simple-sidebar.css" rel="stylesheet">
+    <!-- Bootstrap core JavaScript -->
+    <script src="../static/css/vendor/jquery/jquery.min.js"></script>
+    <script src="../static/css/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
 
+    <script type="text/javascript" src="https://canvasjs.com/assets/script/canvasjs.min.js"></script>
+{% block head%} {% endblock %}
 </head>
 
 <body>
@@ -35,11 +40,11 @@
             <a href="InsideEventLog.html" class="list-group-item list-group-item-action bg-light">Upload Event Log</a>
             <a href="ProcessDiscovery.html" class="list-group-item list-group-item-action bg-light">Insights</a>
             <a href="EventLog.html" class="list-group-item list-group-item-action bg-light">Event Log to SD Log</a>
-            <a href="BehaviorDiscovery.html" class="list-group-item list-group-item-action bg-light">Single Perspective Analysis</a>
-            <a href="MultipleDiscovery.html" class="list-group-item list-group-item-action bg-light">Multiple Perspective Analysis</a>
-<!--            <a href="SDLog.html" class="list-group-item list-group-item-action bg-light">Relation Detection</a>-->
-<!--            <a href="SDLogResutl.html" class="list-group-item list-group-item-action bg-light">Relation Detection-->
-<!--                Detailed</a>-->
+            <a href="BehaviorDiscovery.html" class="list-group-item list-group-item-action bg-light">Single SD Log Analysis</a>
+            <a href="MultipleDiscovery.html" class="list-group-item list-group-item-action bg-light">Multiple SD Logs Analysis</a>
+            <!--            <a href="SDLog.html" class="list-group-item list-group-item-action bg-light">Relation Detection</a>-->
+            <!--            <a href="SDLogResutl.html" class="list-group-item list-group-item-action bg-light">Relation Detection-->
+            <!--                Detailed</a>-->
             <a href="DesignedCDF.html" class="list-group-item list-group-item-action bg-light">Generate CLD Graph</a>
             <a href="DesignedSFD.html" class="list-group-item list-group-item-action bg-light">Generate SFD Graph</a>
             <a href="Validation.html" class="list-group-item list-group-item-action bg-light">Simulation and
@@ -86,21 +91,7 @@
 </div>
 <!-- /#wrapper -->
 
-<!-- Bootstrap core JavaScript -->
-<script src="vendor/jquery/jquery.min.js"></script>
-<script src="vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
-
-<!-- Menu Toggle Script -->
-<script>
-    function LoadELResult() {
-        document.getElementById('ELResult').style.display = "block";
-    }
-
-    function LoadELResultimg() {
-        document.getElementById('ELResultimg').style.display = "block";
-    }
-</script>
-
 </body>
+
 
 </html>
