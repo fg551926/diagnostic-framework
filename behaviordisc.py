@@ -1,9 +1,3 @@
-"""
-- changepoint detetction using sliding window and ks-test
-- decomposition of univariate ts
-- turning points
-- clustering of subsequences
-"""
 import matplotlib.pyplot as plt
 import ruptures as rpt
 import pandas as pd
@@ -28,6 +22,7 @@ def cp_detection_binary_segmentation(points,  show_plot=False, save_plot=False, 
         if show_plot:
             plt.show()
         elif save_plot:
+            plt.tight_layout()
             plt.savefig(outputpath, dpi=300)
     return my_bkps
 
@@ -57,6 +52,7 @@ def cp_detection_KSWIN(points, window_size=100, stat_size=40, period=None, show_
         if show_plot:
             plt.show()
         elif save_plot:
+            plt.tight_layout()
             plt.savefig(outputpath)
     return detections
 
@@ -77,18 +73,19 @@ def cp_detection_ADWIN(points):
     return detections
 
 
-def cp_detection_PELT(points, show_plot=False, save_plot=False, outputpath=None, pen=3):
+def cp_detection_PELT(points, show_plot=False, save_plot=False, clustering=False, outputpath=None, pen=1):
     # change point detection using pelt search method
     model = 'rbf'  # "l1" "l2", "rbf"
     algo = rpt.Pelt(model=model, min_size=3, jump=5).fit(points)
     my_bkps = algo.predict(pen=pen)
 
     # show results
-    if show_plot or save_plot:
+    if show_plot or save_plot or clustering:
         fig, (ax,) = rpt.display(points, my_bkps, figsize=(10, 6))
         if show_plot:
             plt.show()
         elif save_plot:
+            plt.tight_layout()
             plt.savefig(outputpath, dpi=300)
 
     return my_bkps
@@ -154,7 +151,7 @@ def get_windows_size(tw):
 
 
 def subseqeuence_clustering(sequence, changepoints, y_label='y', show_plot=False, save_plot=False, norm=False,
-                            outputpath=None):
+                            outputpath=None, title=None):
     """
     Clusters subsequences of time series indicated by the changepoints variable.
     Uses silhouette score to determine the number of clusters
@@ -172,7 +169,7 @@ def subseqeuence_clustering(sequence, changepoints, y_label='y', show_plot=False
     end_p = [len(sequence) - 1]
     if end_p[0] < changepoints[-1]:  # Pelt gives last point as changepoint for visualisation purposes. Handle that
         changepoints.pop()
-    for cp in changepoints + end_p:
+    for cp in changepoints + end_p:# + end_p:
         X.append(sequence[i:cp])
         index = 'sub_' + str(i) + '_' + str(cp)
         sub_ids.append(index)
@@ -186,7 +183,7 @@ def subseqeuence_clustering(sequence, changepoints, y_label='y', show_plot=False
     #  Find optimal # clusters by
     #  looping through different configurations for # of clusters and store the respective values for silhouette:
     sil_scores = {}
-    for n in range(2, len(changepoints)):
+    for n in range(2, len(changepoints)+1):
         model_tst = TimeSeriesKMeans(n_clusters=n, metric="dtw", n_init=10)
         model_tst.fit(X)
         sil_scores[n] = (silhouette_score(X, model_tst.predict(X), metric="dtw"))
@@ -198,10 +195,12 @@ def subseqeuence_clustering(sequence, changepoints, y_label='y', show_plot=False
         opt_k = 1
     else:
         opt_k = max(sil_scores, key=sil_scores.get)
-    print('Number of Clusters in subsequence clustering: ' + str(opt_k))
+    print('Number of Clusters in subsequence clustering: ' + str(opt_k)+'; Silhouette Scores: '+str(sil_scores))
+
     model = TimeSeriesKMeans(n_clusters=opt_k, metric="dtw", n_init=10)
     labels = model.fit_predict(X)
     print(labels)
+
 
     # build helper df to map metrics to their cluster labels
     df_cluster = pd.DataFrame(list(zip(sub_ids, x_index, model.labels_)), columns=['metric', 'x_index', 'cluster'])
@@ -228,15 +227,18 @@ def subseqeuence_clustering(sequence, changepoints, y_label='y', show_plot=False
     y_scat = np.array(y_scat)
     for c in np.unique(cluster):
         i = np.where(cluster == c)
-        plt.scatter(x_scat[i], y_scat[i], label=c)
+        plt.scatter(x_scat[i], y_scat[i], label="Cluster "+str(c))
     plt.legend()
-    plt.title('Subsequence k-means Clustering')
+    if title:
+        plt.title(title)
+    else:
+        plt.title('Subsequence K-Means Clustering')
     plt.xlabel('Time index')
-    plt.ylabel(y_label)
+    plt.ylabel(y_label, fontsize=16)
     if show_plot:
         plt.show()
     if save_plot:
+        plt.tight_layout()
         plt.savefig(outputpath, dpi=300)
-
 
     return cluster_metrics_dict

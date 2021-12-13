@@ -1,7 +1,7 @@
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
-from behaviordisc import cp_detection_KSWIN, tp_detection, cp_detection_PELT
+from behaviordisc import cp_detection_KSWIN, tp_detection, cp_detection_PELT, subseqeuence_clustering
 import re
 from statsmodels.tsa.stattools import adfuller, acf
 from scipy.fftpack import fft, fftfreq
@@ -16,14 +16,14 @@ EXPECTED_PERIODS = {'1H': [24, 168, 672],  # expected periods for seasonal patte
 def make_timed_data(data, start_tp, time_window):
     timed_data = {}
     x_axis = pd.date_range(start=start_tp, periods=len(data), freq=time_window)
-    x_converted = [x.timestamp()*1000 for x in x_axis]
-    #x_converted = x_axis.astype(np.int64) // 10**9
+    x_converted = [x.timestamp() * 1000 for x in x_axis]
+    # x_converted = x_axis.astype(np.int64) // 10**9
     data_dict = data.to_dict('list')
     for key, value in data_dict.items():
         tmp = []
         for x_val, y_val in zip(x_converted, value):
             tmp.append({'x': x_val, 'y': y_val})
-        #timed_data[key] = str(tmp).replace('\'', '')
+        # timed_data[key] = str(tmp).replace('\'', '')
         timed_data[key] = tmp
     return timed_data
 
@@ -87,7 +87,7 @@ class Sdl:
         self.columns = self.data.columns
         self.tw = re.findall(r'\d+[A-Z]', self.columns[0])[0]  # time window of sd_log
         self.timed_data = make_timed_data(self.data, start_tp=start_tp, time_window=self.tw)
-        self.aspect = self.columns[0].split('_')[0] # column name indicates which aspect
+        self.aspect = self.columns[0].split('_')[0]  # column name indicates which aspect
         #  variables as string
         self.arrival_rate = None
         self.finish_rate = None
@@ -135,7 +135,7 @@ class Sdl:
             self.waiting_time = [s for s in self.columns if "waiting" in s.lower()][0]
             self.num_in_process = [self.columns[7]][0]
 
-        if aspect.lower() == 'res' or aspect.lower() == 'act':
+        if aspect.lower() == 'act':
             self.avg_arrival_rate = [s for s in self.columns if "avg_arrival" in s.lower()][0]
             self.avg_duration = [s for s in self.columns if "avg_duration" in s.lower()][0]
             self.whole_duration = [s for s in self.columns if "whole_duration" in s.lower()][0]
@@ -148,6 +148,16 @@ class Sdl:
             self.unique_resources = [s for s in self.columns if "unique_resources" in s.lower()][0]
             self.engaged_resources = [s for s in self.columns if "engaged_resources" in s.lower()][0]
 
+        if aspect.lower() == 'res':
+            self.avg_arrival_rate = [s for s in self.columns if "avg_arrival" in s.lower()][0]
+            self.avg_duration = [s for s in self.columns if "avg_duration" in s.lower()][0]
+            self.whole_duration = [s for s in self.columns if "whole_duration" in s.lower()][0]
+            self.avg_waiting = [s for s in self.columns if "avgwaiting" in s.lower()][0]
+            self.whole_waiting = [s for s in self.columns if "wholewaiting" in s.lower()][0]
+            self.waiting_events = [s for s in self.columns if "waiting_events" in s.lower()][0]
+            self.finished_events = [s for s in self.columns if "finished_events" in s.lower()][0]
+            self.idle_time = [s for s in self.columns if "idle_time" in s.lower()][0]
+            self.inprocess_events = [s for s in self.columns if "inprocess_events" in s.lower()][0]
 
     def preprocess_rawData(self):
         #  TODO, currently expecting Active (preprocessed) sdLog
@@ -169,11 +179,12 @@ class Sdl:
         plt.show()
 
     def plot_all_with_cp(self, outputpath=None):
-        ax = self.data.plot(subplots=True, xlabel="time steps", title='Plot for all single aspects along with changepoints',
+        ax = self.data.plot(subplots=True, xlabel="time steps",
+                            title='Plot for all single aspects along with changepoints',
                             figsize=(5, 10), grid=True)
 
         for i, col in zip(ax, self.columns):
-            #detected = cp_detection_KSWIN(self.get_points(col), period=self.tw)
+            # detected = cp_detection_KSWIN(self.get_points(col), period=self.tw)
             detected = cp_detection_PELT(self.get_points(col))
             if not detected:
                 continue
@@ -184,7 +195,7 @@ class Sdl:
             i.axvspan(detected[-1], len(self.data), label="Change Point", color="green", alpha=0.3)
         # plt.title('Plot for all single aspects along with changepoints')
         if outputpath:
-            plt.savefig(outputpath, bbox_inches='tight')
+            plt.savefig(outputpath, bbox_inches='tight', dpi=300)
         plt.show()
 
     def calc_turning_points(self):

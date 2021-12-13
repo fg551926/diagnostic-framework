@@ -5,18 +5,14 @@
 """
 import numpy as np
 import pandas as pd
-from statsmodels.tsa.stattools import adfuller
-from statsmodels.tsa.statespace.sarimax import SARIMAX
+
 from statsmodels.graphics.tsaplots import plot_acf, plot_pacf
-from statsmodels.tsa.seasonal import seasonal_decompose
 from statsmodels.tsa.arima_model import ARIMA
 import pmdarima as pm
-from sklearn.metrics import mean_squared_error
-from statsmodels.tools.eval_measures import rmse
+
 import matplotlib.pyplot as plt
 from statsmodels.tsa.api import VAR
 from pmdarima.arima.utils import ndiffs
-from pmdarima.utils import diff_inv
 
 
 def stats_plot_acf(series):
@@ -76,7 +72,7 @@ def auto_arima(series, freq):
     return model
 
 
-def uni_forecast(series, n_periods, freq, save_plot=False, outputpath=None):
+def uni_forecast(series, n_periods, freq, save_plot=False, outputpath=None, title=None, y_label=None):
     """
     This method used the auto_arima model to forecast univariate time series using the SARIMA model.
     The auto_model iterates over different combinations of the parameters and uses the AIC to find the optimal one
@@ -84,8 +80,13 @@ def uni_forecast(series, n_periods, freq, save_plot=False, outputpath=None):
     :param n_periods: number of steps we would like to forecast
     :param freq: periodicity of sd_log. Use period in SdLog Obejct
     :return: predicted values as df with corresponding index
-    @param save_plot:
-    @param outputpath:
+    @param y_label: String for plot
+    @param title: String for plot
+    @param freq: Frequency of the time series. Can also be determined by deasonality test
+    @param n_periods: Periods to forecast
+    @param series: univariate time series data
+    @param save_plot: option to save the output plot
+    @param outputpath: Path for saving the output plot, supports .svg and .png
     """
     # Forecast
     model = auto_arima(series, freq)
@@ -93,23 +94,42 @@ def uni_forecast(series, n_periods, freq, save_plot=False, outputpath=None):
     fc, confint = model.predict(n_periods=n_periods, return_conf_int=True)
     index_of_fc = np.arange(len(series), len(series) + n_periods)
 
+    # Errorrates
+    mae = model.arima_res_.mae
+    mse = model.arima_res_.mse
+
     # make series for plotting purpose
     fc_series = pd.Series(fc, index=index_of_fc)
     lower_series = pd.Series(confint[:, 0], index=index_of_fc)
     upper_series = pd.Series(confint[:, 1], index=index_of_fc)
 
     # Plot
-    plt.plot(series)
-    plt.plot(fc_series, color='darkgreen')
+    plt.plot(series, label='Observed')
+    plt.plot(fc_series, color='darkgreen', label='Forecast')
     plt.fill_between(lower_series.index,
                      lower_series,
                      upper_series,
                      color='k', alpha=.15)
+    plt.legend(loc='best')
 
-    plt.title("Forecast of " + str(n_periods) + " periods")
+    if title:
+        plt.title(title, fontsize=16)
+    else:
+        plt.title("Forecast of " + str(n_periods) + " periods")
+    plt.xlabel('Time index', fontsize=12)
+    if y_label:
+        plt.ylabel(y_label, fontsize=12)
+    plt.grid()
+
+    print("MAE: ", mae)
+    print("MSE: ", mse)
     if save_plot:
-        plt.savefig(outputpath)
-    plt.show()
+        plt.tight_layout()
+        if outputpath.endswith('.svg'):
+            plt.savefig(outputpath, format='svg', dpi=1200)
+        else:
+            plt.savefig(outputpath, dpi=300)
+    #plt.show()
 
     #print(model.summary())
     return fc_series, model
@@ -127,13 +147,11 @@ def arima_diagnostic(model):
 
 def multi_forecast(sd_log, variables, n_period, save_plot=False, outputpath=None):  # sd_log object, variables list of features column names
     """
-
-    :param sd_log: sd_log object
-    :param variables: features you would like to use for the multivariate forecast as list
-    :param n_period: steps you would like to predict
-    :return:
-    @param outputpath:
-    @param save_plot:
+    @param n_period: steps you would like to predict
+    @param variables: features you would like to use for the multivariate forecast as list
+    @param sd_log: sd_log object
+    @param outputpath: Path for saving the output plot
+    @param save_plot: Option to save the output plot
     """
     max_lag = 6
     # Check for stationary
@@ -149,6 +167,7 @@ def multi_forecast(sd_log, variables, n_period, save_plot=False, outputpath=None
     model = VAR(data)
     # Look for minimum AIC/BIC and corresponding lag to fit model
     lag = min(model.select_order(maxlags=max_lag).selected_orders.values())
+    print('VAR(p) - Best Order for value p:', lag)
     #lag = 1
 
     results = model.fit(lag)
@@ -157,15 +176,20 @@ def multi_forecast(sd_log, variables, n_period, save_plot=False, outputpath=None
     results.plot_forecast(n_period)
     lag_order = results.k_ar
     fc = results.forecast(data.values[-lag_order:], n_period)
-    df_fc = pd.DataFrame(fc, index=data.index[-n_period:])
+    confint = results.forecast_interval(data.values[-lag_order:], steps=n_period)
+    fc_index = [i for i in np.arange(start=data.index[-1], stop=data.index[-1]+n_period)]
+    df_fc = pd.DataFrame(fc, index=fc_index, columns=data.columns + ' Forecast')
+    df_confint_low = pd.DataFrame(confint[1], index=fc_index, columns=data.columns)
+    df_confint_up = pd.DataFrame(confint[2], index=fc_index, columns=data.columns)
     # inverting resulting forecast
-    # inv_diff(sd_log.data[sd_log.finish_rate], data[sd_log.finish_rate], ndiff)
+    #inv_series = inv_diff(sd_log.data[sd_log.finish_rate], data[sd_log.finish_rate], ndiff)
     # get equation
     df_coef = results.params
+    plt.grid()
     if save_plot:
         plt.savefig(outputpath)
     plt.show()
-    return df_fc, df_coef
+    return df_fc, df_coef, results, df_confint_low, df_confint_up
 
 
 def var_diagnostic(model_fitted):
@@ -179,7 +203,7 @@ def var_diagnostic(model_fitted):
     print(fevd.summary())
 
     ser_cor = check_ser_corr(model_fitted)
-    print('Check for serial correlation (values aroun 2 are good): ' + str(ser_cor))
+    print('Check for serial correlation (values around 2 are good): ' + str(ser_cor))
 
     model_fitted.plot_acorr()
 
@@ -250,39 +274,5 @@ def test(series):
     plt.fill_between(lower_series.index, lower_series, upper_series,
                      color='k', alpha=.15)
     plt.title('Forecast vs Actuals' + 'RMSE: ' + str(rmse))
-    plt.legend(loc='upper left', fontsize=8)
-    plt.show()
-
-
-def test2(series):
-    #  not auto arima
-    n = round(len(series) * 0.8)
-    m = round(len(series) - n)
-    train = series[:n]
-    test_x = series[n:]
-
-    model = ARIMA(train, order=(3, 0, 3))
-    model_fit = model.fit(disp=0)
-    # Forecast
-    fc, se, conf = model_fit.forecast(m, alpha=0.05)  # 95% conf
-    index_of_fc = np.arange(n, len(series))
-
-    # Make as pandas series
-    fc_series = pd.Series(fc, index=index_of_fc)
-    test_series = pd.Series(test_x, index=index_of_fc)
-    lower_series = pd.Series(conf[:, 0], index=index_of_fc)
-    upper_series = pd.Series(conf[:, 1], index=index_of_fc)
-
-    # Calc RMSE
-    rmse = np.mean((fc - test_x) ** 2) ** .5
-    model_fit.plot_predict(dynamic=False)
-    # Plot
-    plt.figure(figsize=(12, 5), dpi=100)
-    plt.plot(train, label='training')
-    plt.plot(test_series, label='actual')
-    plt.plot(fc_series, label='forecast')
-    plt.fill_between(lower_series.index, lower_series, upper_series,
-                     color='k', alpha=.15)
-    plt.title('ARIMA(3,0,3) Forecast vs Actuals ' + 'RMSE: ' + str(rmse))
     plt.legend(loc='upper left', fontsize=8)
     plt.show()

@@ -160,7 +160,7 @@ class El:
     def __init__(self, filepath):
         self.path = filepath
         self.log, self.log_csv = load_data(filepath)
-        self.__first_timestamp = min(self.log_csv['Start Timestamp'])
+        #self.__first_timestamp = min(self.log_csv['Start Timestamp'])
         self.lifecycle = check_for_lifecycle(self.log)
         self.petri_net = None  # can be extended later
 
